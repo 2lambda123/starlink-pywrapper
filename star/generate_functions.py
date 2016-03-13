@@ -380,23 +380,27 @@ classheaders = """
 by python-starscripts/generate_functions.py.
 \"\"\"
 
-from star import star as starcomm
+import utils
 """
 
 def create_class(module, names, docstrings, commanddict):
-    classcode = ['class {}(object):'.format(module),
-                 ' '*4 +'"""Run commands from the {} module"""'.format(module.upper()),
-                 '\n',]
+    #classcode = ['class {}(object):'.format(module),
+    #             ' '*4 +'"""Run commands from the {} module"""'.format(module.upper()),
+    #             '\n',]
+
+    classcode = []
 
     for name in names:
 
         methodcode = [
-             ' '*4 + '@staticmethod',
-             ' '*4 + 'def {}({}):'.format(name, docstrings[name][1]),
-             ' '*8 + '"""',
-             '\n'.join([i if not i else ' '*8 + i  for i in docstrings[name][0].split('\n')]),
+             #' '*4 + '@staticmethod',
+             ' '*0 + 'def {}({}):'.format(name, docstrings[name][1]),
+             ' '*4 + '"""',
+             '\n'.join([i if not i else ' '*4 + i  for i in docstrings[name][0].split('\n')]),
              '        """',
-             ' '*8 + 'return starcomm("{}", {})'.format(commanddict[name], docstrings[name][1]),
+             ' '*4 + 'return utils.starcomm("{}", "{}", {})'.format(commanddict[name],
+                                                              name,
+                                                              docstrings[name][1]),
              '\n',
         ]
 
