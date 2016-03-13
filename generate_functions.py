@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Namedtuples to hold parameter and command information.
 parinfo = namedtuple('parinfo',
                      'name type_ prompt default position range_ ' \
-                     'in_ access association ppath vpath readwrite')
+                     'in_ access association ppath vpath list_ readwrite')
 commandinfo = namedtuple('commandinfo', 'name description pardict')
 
 
@@ -109,7 +109,9 @@ def _ifl_parser(ifllines, parameter_info, comname=''):
 
         # Assign output values from input information
         if parameter_info and parameter_info.has_key(parname):
-            values.append(parameter_info[parname].readwrite)
+            pinfo = parameter_info[parname]
+            values.append(pinfo.list_)
+            values.append(pinfo.readwrite)
         else:
             values.append(None)
             values.append(None)
@@ -171,14 +173,19 @@ def get_module_info(hlp, iflpath):
             # instead of 'LBND( 2 )' )
             parnames = [i.split('=')[0].split('(')[0].strip().lower() for i in parameters]
 
+            # Get array stuff
+            array = None
+            parlist = [True if '(' in  i.split('=')[0] else False for i in parameters]
+
+
             # Get types (e.g. is it write or read variable)
             par_type = [i.split('(')[-1].strip(')\n').lower() if '(' in i else None for i in parameters ]
 
             # Create output variables.
             parameter_info = dict()
-            for pname, ptype in zip(parnames, par_type):
+            for pname, ptype, plist in zip(parnames, par_type, parlist):
                 # So far we only have the readwrite information.
-                parameter_info[pname] = parinfo(pname, *([None]*10 + [ptype]))
+                parameter_info[pname] = parinfo(pname, *([None]*10 + [plist] + [ptype]))
 
 
 
@@ -279,6 +286,9 @@ def make_docstrings(moduledict):
                     inp += '_'
                 python_type = _get_python_type(vals.type_)
 
+                if vals.list_:
+                    python_type = 'List[' + python_type + ']'
+
                 range_ = ''
                 if vals.range_ is not None:
                     range_ = ', ' + '-'.join(vals.range_.split(','))
@@ -307,6 +317,8 @@ def make_docstrings(moduledict):
                     inp += '_'
                 python_type = _get_python_type(vals.type_)
 
+                if vals.list_:
+                    python_type = 'List[' + python_type + ']'
                 range_ = ''
                 if vals.range_:
                     range_ = ', '+'-'.join(vals.range_.split(','))
@@ -327,6 +339,10 @@ def make_docstrings(moduledict):
                 if iskeyword(inp):
                     inp = inp + '_'
                 python_type = _get_python_type(vals.type_)
+
+                if vals.list_:
+                    python_type = 'List[' + python_type + ']'
+
                 parstring = ' '*4 + inp.lower() +' (' + python_type + ')'
                 if vals.prompt:
                     parstring += ': ' + vals.prompt
@@ -343,6 +359,10 @@ def make_docstrings(moduledict):
                 if iskeyword(outp):
                     inp = outp + '_'
                 python_type = _get_python_type(vals.type_)
+
+                if vals.list_:
+                    python_type = 'List[' + python_type + ']'
+
                 parstring = ' '*4 + outp.lower() +' (' + python_type + ')'
                 if vals.prompt:
                     parstring += ': ' + vals.prompt
