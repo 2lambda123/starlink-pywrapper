@@ -12,15 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import re
+# Author: SF Graves
+
+
+import logging
 import os
+import re
 
 from collections import namedtuple
 from keyword import iskeyword
 
-from star import smurf as starsmurf
 
-import logging
+# Set up normal logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -30,10 +33,16 @@ parinfo = namedtuple('parinfo',
                      'in_ access association ppath vpath readwrite')
 commandinfo = namedtuple('commandinfo', 'name description pardict')
 
+
+
 def _get_python_type(startype):
+    """
+    Get name of normal python type from STARLINK type.
+    """
     # remove quotes
     if startype:
         startype = startype.replace('"','').replace("'",'')
+
     if startype == '_LOGICAL':
         return 'bool'
     elif startype == '_INTEGER' or startype == '_integer':
@@ -54,24 +63,42 @@ def _get_python_type(startype):
 # Get information from help system (gets a one line prompt string,
 # which is handy for short help).
 def _ifl_parser(ifllines, parameter_info, comname=''):
-    t=''.join(ifllines)
-    parindices = [m.start() for m in re.finditer('\n[\s]*parameter', t)]
-    endindices = [m.start() for m in re.finditer('\n[\s]*endparameter', t)]
+
+    """Get parameter info from an ifl file for a command.
+
+    iflines should be the results of a readlines() command
+      on a command.ifl file.
+
+    parameter_info is a parameter_info dict of parinfo tuples, holding
+      the readwrite info if already gotten about that parameter.
+
+    returns a dict, with commandnames as keys and parinfo objects as
+    values.
+
+    """
+
+    ifl=''.join(ifllines)
+
+    # Parse IFL file to find start and end of each parameter.
+    parindices = [m.start() for m in re.finditer('\n[\s]*parameter', ifl)]
+    endindices = [m.start() for m in re.finditer('\n[\s]*endparameter', ifl)]
     pardict={}
 
+    # Go through each parameter
     for i, j in zip(parindices, endindices):
 
-        res = t[i:j]
-        res = res.strip()
+        # Get the strings for the parameter information.
+        res = ifl[i:j].strip()
         reslist = res.split('\n')
 
+        # Find the parname
         parname = reslist[0].split()[1].strip().lower()
 
-        # skip access as it isn't actually useful for what we want (IN is
-        # a 'WRITE' parameter, not a READ parameter).
+        # Get each field from the ifl string (if present).
         fields = ['type', 'prompt', 'default', 'position', 'range',
                   'in', 'access', 'association', 'ppath', 'vpath']
         values = []
+
         for a in fields:
             val = _ifl_get_parameter_value(reslist, a)
             if a == 'prompt' and isinstance(val, str):
@@ -80,12 +107,13 @@ def _ifl_parser(ifllines, parameter_info, comname=''):
                 val = val.replace("'",'').replace('"','')
             values.append(val)
 
-        # Assign output values
+        # Assign output values from input information
         if parameter_info and parameter_info.has_key(parname):
             values.append(parameter_info[parname].readwrite)
         else:
             values.append(None)
-            #print '%s: parname %s found in ifl but was not in .hlp' % (comname, parname)
+            values.append(None)
+            logger.debug('%s: parname %s found in ifl but was not in .hlp' % (comname, parname))
 
         pardict[parname] =  parinfo(parname, *values)
 
@@ -93,6 +121,10 @@ def _ifl_parser(ifllines, parameter_info, comname=''):
 
 
 def _ifl_get_parameter_value(paramlist, value):
+
+    """
+    Get the value of a parameter (as a string).
+    """
     findvalues = [s for s in paramlist if s.strip().startswith(value)]
     if findvalues:
         result = findvalues[0].split(value)[1].strip()
@@ -103,6 +135,17 @@ def _ifl_get_parameter_value(paramlist, value):
 
 
 def get_module_info(hlp, iflpath):
+
+    """
+    Get info on the commands in a Starlink module.
+
+    hlp is the result of readlines() on a module.hlp file.
+
+    iflpath is the location in which comand.ifl files can be found.
+
+    Returns a dictionary with commandnames as keys, and a dictionary
+    of parinfo tuples (keyed by parameter name).
+    """
     matchcommandname = re.compile('^1 [A-Z0-9]+$')
     comnames = [i for i in hlp if matchcommandname.search(i)]
     moduledict={}
@@ -185,7 +228,8 @@ def make_docstrings(moduledict):
                 elif not readwrite and i.readwrite:
                     readwrite = i.readwrite
 
-                # If dynamic is start of vpath, and there is no default, replace the default with 'dyn.'
+                # If dynamic is start of vpath, and there is no
+                # default, replace the default with 'dyn.'
                 if i.vpath and i.vpath.startswith('DYNAMIC'):
                     default = 'dyn.'
                     temp = list(i)
@@ -266,9 +310,9 @@ def make_docstrings(moduledict):
                 range_ = ''
                 if vals.range_:
                     range_ = ', '+'-'.join(vals.range_.split(','))
-                parstring = ' '*4 + inp.lower() +' (' + python_type + range_ + '): '
+                parstring = ' '*4 + inp.lower() +' (' + python_type + range_ + ')'
                 if vals.prompt:
-                    parstring += vals.prompt
+                    parstring += ': ' + vals.prompt
                 if vals.position:
                     parstring += ' (posit: %i)'% int(vals.position)
                 if vals.default:
@@ -283,9 +327,9 @@ def make_docstrings(moduledict):
                 if iskeyword(inp):
                     inp = inp + '_'
                 python_type = _get_python_type(vals.type_)
-                parstring = ' '*4 + inp.lower() +' (' + python_type + '): '
+                parstring = ' '*4 + inp.lower() +' (' + python_type + ')'
                 if vals.prompt:
-                    parstring += vals.prompt
+                    parstring += ': ' + vals.prompt
                 if vals.default:
                     parstring += ' [' + vals.default + ']'
                 doc += [parstring]
@@ -299,9 +343,9 @@ def make_docstrings(moduledict):
                 if iskeyword(outp):
                     inp = outp + '_'
                 python_type = _get_python_type(vals.type_)
-                parstring = ' '*4 + outp.lower() +' (' + python_type + '): '
+                parstring = ' '*4 + outp.lower() +' (' + python_type + ')'
                 if vals.prompt:
-                    parstring += vals.prompt
+                    parstring += ': ' + vals.prompt
                 doc += [parstring]
             doc +=['']
 
@@ -323,16 +367,20 @@ def create_class(module, names, docstrings, commanddict):
     classcode = ['class {}(object):'.format(module),
                  ' '*4 +'"""Run commands from the {} module"""'.format(module.upper()),
                  '\n',]
+
     for name in names:
+
         methodcode = [
              ' '*4 + '@staticmethod',
              ' '*4 + 'def {}({}):'.format(name, docstrings[name][1]),
              ' '*8 + '"""',
-             '\n'.join([' '*8 + i for i in docstrings[name][0].split('\n')]),
+             '\n'.join([i if not i else ' '*8 + i  for i in docstrings[name][0].split('\n')]),
              '        """',
              ' '*8 + 'return starcomm("{}", {})'.format(commanddict[name], docstrings[name][1]),
              '\n',
         ]
+
+        methodcode = ['\n' if i.isspace() else i for i in methodcode]
         classcode += methodcode
 
     f = open(module + '.py', 'w')
@@ -351,14 +399,12 @@ def get_command_paths(shfile, comnames, modulename, shortname):
             # Find everything before the argument passing (${1+"$@"}, and after the
             # initial curly brace. Strip off the trailing and leading white space.
             command = commandline.split('${1+"$@"}')[0].split('{')[1].strip()
-            commanddict[c] = commandline
+            commanddict[c] = command
+            print command
     return commanddict
 
 
 # Get info from .hlp files: best way to find out if parameter is read or write.
-f = open('/export/data/sgraves/StarSoft/starlink/applications/smurf/smurf.hlp', 'r')
-smurfhlp = f.readlines()
-f.close()
 starbuildpath='/export/data/sgraves/StarSoft/starlink'
 for modulename in ['kappa', 'cupid', 'convert', 'smurf']:
     #for modulename in ['convert']:
@@ -378,6 +424,10 @@ for modulename in ['kappa', 'cupid', 'convert', 'smurf']:
     shortname = modulename
     if modulename == 'convert':
         shortname = 'con'
+    if moduledict.has_key(modulename):
+        moduledict.pop(modulename)
+    if moduledict.has_key(shortname + '_help'):
+        moduledict.pop(shortname + '_help')
     commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
     docstrings = make_docstrings(moduledict)
 
