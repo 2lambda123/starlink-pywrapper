@@ -26,11 +26,6 @@ By default it will create a new temporary adam directory in the
 current folder, and use that as the adam directory for the starlink
 processes.
 
-NOTE: the starlink starutil.py interface looks rather more thorough,
-should check what it does before bothering to add things to this. If
-anyone other than me is reading this, then they nmight want to use the
-starutil interface rather than this.
-
 This code was written to allow quick calling of kappa, smurf and cupid
 in the way I usually think about them from python scripts, with
 regular keyword variables.
@@ -46,6 +41,7 @@ import atexit
 import logging
 import numpy as np
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -53,14 +49,11 @@ import sys
 import tempfile
 import time
 
-
-
-
 from collections import namedtuple
 from keyword import iskeyword
 
 from astropy.io import fits
-from starlink import hds
+from starlink import hds, ndfpack
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -151,6 +144,9 @@ def set_interactive(choice):
 
 # Set the starlink parameter QUIET to True.
 QUIET = True
+
+# Don't use current/last values as default
+RESET = True
 
 #--------------------convert utilities
 
@@ -264,15 +260,14 @@ env['STARLINK_DIR'] = starpath
 #-----------------------------------------------------------------------
 
 # Basic command to execute a starlink application
-def star(module, com, *args, **kwargs):
+def star(command, *args, **kwargs):
     """Execute a Starlink application
 
     Carries out the starlink command, and returns a namedtuple of the
     starlink parameter values (taken from $ADAM_DIR/<com>.sdf
 
     Args:
-        module (str): name of module, e.g. 'kappa' or 'smurf'
-        com (str): name of command, e.g. 'stats' or 'makecube'
+        com (str): path of command, e.g. '$KAPPADIR/stats' or '$SMURFDIR/makecube'
 
     Kwargs:
         returnStdOut (bool): return the commands std out as string
@@ -314,6 +309,9 @@ def star(module, com, *args, **kwargs):
     # subprocess.Popen.
     arg = _make_argument_list(*args, **kwargs)
 
+    if RESET:
+        arg += ['RESET']
+
     try:
         logger.debug([compath]+arg)
 
@@ -353,32 +351,6 @@ def star(module, com, *args, **kwargs):
         else:
             raise err
 
-
-def _make_argument_string(*args, **kwargs):
-    """
-    Turn pythonic list of positional arguments and keyword arguments
-    into a starlink string.
-
-    TODO: this should really be more thoroughly checked...
-    """
-    output = ''
-
-    # Go through each positional argument.
-    for i in args:
-        output += str(i)+' '
-    for key, value in kwargs.items():
-        # if key ends in _ strip it out (so that you can use
-        # in_=... as in=... is not allowed as its a reserved work in
-        # python)
-        if key[-1] == '_':
-            key = key[:-1]
-        output += str(key)+'='+str(value)+' '
-
-    #remove trailing space
-    output = output.rstrip()
-
-    # Return list of arguments (as a string).
-    return output.rstrip()
 
 
 def _make_argument_list(*args, **kwargs):
@@ -437,34 +409,6 @@ def convert(com, *arg, **kwargs):
     return star('convert', com, *arg, **kwargs)
 
 
-def parget(applic, parname):
-
-    """Get output from kappa parget using Popen.
-
-    THIS IS DEPRECATED.
-
-    NOTE: error checking is nonexistent as parget doesn't seem to
-    easily return an error code to stderr or to return a non 0 status
-    value. It is therefore important to check that the output is in an
-    expected form.
-
-    Example usage:
-    > maxpos = star.parget('stats', 'maxpos')
-    """
-
-    arg = 'applic=' + applic + ' parname=' + parname
-    compath = os.path.join(starpath, 'bin', 'kappa', 'parget')
-    logger.debug([compath] + arg)
-    output = subprocess.Popen([compath] +
-                              arg, env=env, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE
-                              )
-    stdout, stderr = output.communicate()
-    status = output.returncode
-    if status != 0:
-        raise PargetError(compath, arg, stdout, stderr)
-    return stdout.strip()
-
 
 class StarError(StandardError):
     def __init__(self, compath, arg, stderr):
@@ -474,401 +418,30 @@ class StarError(StandardError):
         StandardError.__init__(self, message)
 
 
-class PargetError(StarError):
-    def __init__(self, compath, arg, stdout, stderr):
-        message = 'Starlink error occured during:\n %s %s\n ' % (compath, arg)
-        message += '\n The stdout and stderr from the command are:\n'
-        message += '%s \n %s' % (stdout, stderr)
-        StandardError.__init__(self, message)
-
-
-def _get_vals(module, com, *args, **kwargs):
-
+def get_fitshdr(datafile, form='sdf'):
     """
-    Get the output from a starlink command.
+    Return a astropy.io.fits header object.
+
+    kwarg:
+    form (str): can be 'sdf' or 'fits'
 
     """
 
-    compath = os.path.join(starpath, 'bin', module, com)
-    arg = _make_argument_list(*args, **kwargs)
 
-    logger.debug([compath]+arg)
+    if form == 'sdf':
+        ndf = ndfpack.Ndf(datafile)
+        fitshead = ndf.head['FITS']
+        hdr = fits.Header.fromstring('\n'.join(fitshead), sep='\n')
 
-    output = subprocess.Popen([compath] +
-                              arg, env=env, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE
-                              )
-    stdout, stderr = output.communicate()
-    status = output.returncode
-    if status != 0:
-        raise PargetError(compath, arg, stdout, stderr)
-    return stdout.strip()
-
-
-def hdsread(ndf, compname):
-
-    """
-    Read information from and ndf using hdstrace.
-    Example usage:
-    > value = star.hdsread('myndf', 'mean')
-    """
-
-    ret = _get_vals('', 'hdstrace', ndf+'.'+compname,
-                    newline=True, full=True, nlines='all',
-                    widepage=True)
-    return hdstrace_eval(ret)
-
-
-def read_starval(applic, parname):
-
-    """Read returned parameter values stored in the $ADAM_DIR/applicname.sdf'
-
-    E.g. to get the values maxpos position calculated after running
-    stats, do:
-
-    >maxpos = star.read_starval('stats', 'maxpos')
-
-    Values should be returned in a sensible format, but please check.
-
-    """
-    ndf = os.path.join(adamdir, applic+'.sdf')
-    return hdsread(ndf, parname)
-
-
-def hdstrace_eval(hdstracestring):
-
-    """Get a sensible value out of the results of an hdstrace.
-
-    This has not been entirely tested, so check that is has returned
-    somehting sensible before relying on it in scripts.
-
-    """
-
-    # Split at new lines.
-    strings = hdstracestring.split('\n')
-
-    # This should find the type of value that is stored
-    # e.g. CHAR, INTEGER etc.
-    thetype = strings[0].split()[1][1:-1]
-
-    # If its an ADAM_PARNAME, then the types is written somewhere else.
-    if thetype == 'ADAM_PARNAME':
-        thetype = strings[2].split()[1][1:-1]
-
-    # Split on commas by default.
-    splitval = ","
-
-    # Go through the different types that I can cope with, set the
-    # convert function and the character to split at if different
-    # from commas.
-    if thetype[1:5] == 'CHAR':
-        convert = str
-        splitval = "'"
-    elif thetype == '_INTEGER':
-        convert = int
-    elif thetype == '_DOUBLE':
-        convert = float
-    elif thetype == '_LOGICAL':
-        convert = bool
-    else:
-        convert = str
-
-    # Join the correct list of strings back into one thing (some values
-    # are multi line).
-    values = ''.join(strings[3:-2])
-
-    # split values by splitval and remove any that are empty
-    result = filter(None, [i.strip() for i in values.split(splitval)])
-    # convert each object in result to the sensible format
-
-    if convert == float:
-        result = [i.replace('D', 'E') for i in result]
-    res2 = np.array([convert(i) for i in result])
-
-    #filter out valaues that are just a comma...
-    res3 = []
-    for i in res2:
-        if i != ',':
-            res3.append(i)
-    return res3
-
-
-# get the fits header from a data file. If a fits header doesn't
-# exist, then create it and use that
-def get_fitshdr(datafile):
-    """
-
-    Get the fits header from a datafile (either fits or ndf).
-
-    If it can't be read in, then assume its an ndf and try converting
-    it to fits (note that the tempfile stuff is probably not
-    entirely safe.
-
-    """
-    try:
+    elif form == 'fits':
         hdr = fits.getheader(datafile)
-    except IOError:
-        #can't read in with fits
-        tfile = tempfile.NamedTemporaryFile()
-        name = tfile.name
-        #this is unsafe...
-        tfile.close()
-        convert('ndf2fits', datafile, name+'.fits')
-        hdr = fits.getheader(name+'.fits')
-        os.remove(name+'.fits')
+
+    else:
+        raise StandardError('Unknown file format %s: form must be "sdf" or "fits"' %  form)
+
     return hdr
 
 
-############################
-# HIGHER Level functions
-############################
-
-
-def oracdr_setup(instrument, ORAC_DIR=None, date=None,
-                 ORAC_DATA_IN=None, ORAC_DATA_OUT=None,
-                 ORAC_CAL_ROOT=None, ORAC_DATA_CAL=None,
-                 ORAC_PERL5LIB=None):
-    """
-    Setup the various ORAC-DR environmental variables.
-
-    """
-    oracenv = {}
-    if not date:
-        date = time.strftime('%Y%M%d')
-    instrument = instrument.lower()
-    if instrument.split('_')[0] =='scuba-2':
-        splits = instrument.split('_')
-        splits[0] = 'scuba2'
-        instrument = '_'.join(splits)
-
-    instrument_short = instrument.split('_')[0]
-
-    if not ORAC_DIR:
-        ORAC_DIR = os.path.join(starpath, 'bin', 'oracdr', 'src')
-
-    oracenv['ORAC_DIR'] = ORAC_DIR
-
-    if not ORAC_CAL_ROOT:
-        ORAC_CAL_ROOT = os.path.join(ORAC_DIR, '..', 'cal')
-    oracenv['ORAC_CAL_ROOT'] = ORAC_CAL_ROOT
-
-    if not ORAC_DATA_CAL:
-        ORAC_DATA_CAL = os.path.join(ORAC_CAL_ROOT, instrument_short)
-    oracenv['ORAC_DATA_CAL'] = ORAC_DATA_CAL
-
-    if not ORAC_PERL5LIB:
-        ORAC_PERL5LIB = os.path.join(ORAC_DIR, 'lib', 'perl5')
-    oracenv['ORAC_PERL5LIB'] = ORAC_PERL5LIB
-
-    ORAC_INSTRUMENT = instrument
-    oracenv['ORAC_INSTRUMENT'] = ORAC_INSTRUMENT
-
-    oracenv['ORAC_LOOP'] = "flag -skip"
-
-    if not ORAC_DATA_IN:
-        try:
-            oracenv.pop('ORAC_DATA_IN')
-        except KeyError:
-            pass
-            try:
-                env.pop('ORAC_DATA_IN')
-            except KeyError:
-                pass
-        # Now set orac_data_in correctly...
-        if instrument == 'scuba2_850' or 'scuba2_450':
-            ORAC_DATA_IN='/jcmtdata/raw/scuba2/ok/'+date
-    oracenv['ORAC_DATA_IN'] = ORAC_DATA_IN
-
-
-    if not ORAC_DATA_OUT:
-        ORAC_DATA_OUT = '.'
-    else:
-        ORAC_DATA_OUT = os.path.relpath(ORAC_DATA_OUT)
-
-    oracenv['ORAC_DATA_OUT'] = ORAC_DATA_OUT
-    oracenv['STAR_LOGIN']='1'
-
-    return oracenv
-
-
-
-def oracdr(arglist, instrument='SCUBA2_850', ORAC_DIR=None, date=None,
-                 ORAC_DATA_IN=None, ORAC_DATA_OUT=None,
-                 ORAC_CAL_ROOT=None, ORAC_DATA_CAL=None,
-                 ORAC_PERL5LIB=None) :
-    """
-    Currently just takes in a list of arguments
-    REturns status, which may not be useful.
-    """
-    oracenv = oracdr_setup(instrument=instrument, ORAC_DIR=ORAC_DIR, date=date,
-                 ORAC_DATA_IN=ORAC_DATA_IN, ORAC_DATA_OUT=ORAC_DATA_OUT,
-                 ORAC_CAL_ROOT=ORAC_CAL_ROOT, ORAC_DATA_CAL=ORAC_DATA_CAL,
-                           ORAC_PERL5LIB=ORAC_PERL5LIB)
-    oenv = env.copy()
-    oenv.update(oracenv)
-    oracdr_perlcom = os.path.join(starpath, 'Perl', 'bin', 'perl')
-    oracdr_com = os.path.join(oenv['ORAC_DIR'], 'bin', 'oracdr')
-    oracdr_command_list = [oracdr_perlcom, oracdr_com]
-    logger.info('ORAC_COMMAND is:'+' '.join(oracdr_command_list+arglist))
-
-    output = subprocess.Popen(oracdr_command_list + arglist,
-                              env=oenv, preexec_fn=subprocess_setup)
-    status = output.communicate()
-    return status, oracenv
-
-def picard(*args):
-    if 'ORAC_DIR' not in env:
-        env['ORAC_DIR'] = os.path.join(starpath, 'bin', 'oracdr', 'src')
-
-    env['ORAC_PERL5LIB'] = os.path.join(env['ORAC_DIR'], 'lib', 'perl5')
-    env['PERL5LIB'] = os.path.join(starpath, 'Perl', 'lib', 'perl5') + os.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5', 'site_perl')
-
-    command = os.path.join(env['ORAC_DIR'], 'etc', 'picard_start.sh')
-
-    comargs = command + ' '.join(args)
-
-    proc = subprocess.Popen(comargs, env=env, shell=True)
-    proc.communicate()
-
-
-def findclumps(*args, **kwargs):
-
-    """Convenience method for carrying out findclumps within python script.
-
-    Uses fellwalker if you don't specify the method.
-
-    config parameters are read in from the kwargs, ONLY USED IF config
-    is not explicitly set in call.
-
-    findclumps parameters:
-    ----------------------
-    backoff
-    config
-    deconv
-    msg_filter
-    in
-    jsacat
-    logfile
-    method
-    nclumps
-    out
-    outcat
-    perspectrum
-    qout
-    repconf
-    *rms* -- needs to be in regular
-    shape
-    wcspar
-
-    config parameters for fellwalker:
-    ---------------------------------
-    allowedge
-    cleaniter
-    flatslope
-    fwhmbeam
-    maxbad
-    mindip
-    minheight
-    minpix
-    maxjump
-    noise
-    velores
-
-    In addition, keepConfigFile=True will cause the temporary config
-    file to not be deleted afterwards.
-
-    """
-
-    # Replace in_ with in:
-    if 'in_' in kwargs:
-        kwargs['in'] = kwargs.pop('in_')
-
-    # Ensure using lowercase for all kwargs.
-    kwargs = dict((k.lower(), v) for k, v in kwargs.items())
-
-    # First see if keepConfigFile has been set, and remove from kwargs if so.
-    if 'keepconfigfile' in kwargs:
-        keepconfig = kwargs.pop('keepconfigfile')
-    else:
-        keepconfig = False
-
-    # First separate out all the allowed cupid parameters:
-    # assume any kwargs not in this list are calls to config.
-    cupidpar = [
-        'backoff',
-        'config',
-        'deconv',
-        'msg_filter',
-        'in',
-        'jsacat',
-        'logfile',
-        'method',
-        'out',
-        'outcat',
-        'perspectrum',
-        'qout',
-        'repconf',
-        'shape',
-        'wcspar',
-        'rms',
-        'maxvertices']
-
-    #---------------------------------------------------------
-    # Turn the findclumps and config options into dictionaries.
-
-    # Get all kwargs that are listed in cupidpar into one dictionary.
-    cupid_kwargs = dict([(i, kwargs[i])
-                        for i in kwargs if i.lower() in cupidpar])
-
-    # Now get all kwargs that are not in cupid par and assume they are
-    # config options.
-    config_kwargs = dict([(i, kwargs[i])
-                         for i in kwargs if i.lower() not in cupidpar])
-
-    #------------------------------------------------------------
-    # Turn the config kwargs dictionary into a config file.
-
-    # If config is not set in the call, produce an output file with the
-    # requested config params set.
-    if not 'config' in cupid_kwargs:
-
-        # First check which method is being used for clumpfinding.
-        if 'method' in cupid_kwargs:
-            method = cupid_kwargs['method']
-        elif len(args) == 4:
-            method = args[3]
-        else:
-            # If not specified use fellwalker.
-            method = 'fellwalker'
-            cupid_kwargs['method'] = method
-
-        # Now get the configkwargs as a string.
-        method_kwargs = dict(
-            [(method+'.'+i, config_kwargs[i]) for i in config_kwargs])
-
-        configstrings = [str(key)+'='+str(method_kwargs[key])
-                         + r',' for key in method_kwargs]
-
-        configfile = tempfile.NamedTemporaryFile(delete=False)
-
-        # Write out the config string to a tempfile.
-        for i in configstrings:
-            configfile.write(i+os.linesep)
-        configfile.close()
-
-        # Now set the cupid config argument to be the tempfile.
-        cupid_kwargs['config'] = r'^'+configfile.name
-
-    #-------------------------------------------------------------
-    # Actually call cupid and run findclumps.
-    cupid('findclumps', *args, **cupid_kwargs)
-
-    #--------------------------------------------------------------
-    # if set, remove the config file
-    if configfile and not keepconfig:
-        os.remove(configfile.name)
-
-#---------------------------------------------------------------------
 
 
 def get_hds_values(comname):
@@ -879,7 +452,6 @@ def get_hds_values(comname):
     """
 
     hdsobj = hds.open(os.path.join(adamdir, comname), 'READ')
-    logger.debug('Opened %s to get values' %hdsobj.name.strip())
 
     # Iterate through it to get all the results.
     results = _hds_iterate_components(hdsobj)
@@ -888,7 +460,8 @@ def get_hds_values(comname):
     if results.has_key('adam_dyndef'):
         results.pop('adam_dyndef')
 
-    # Fix up the name ptrs (if they are the only thing in the dictionary)
+    # Fix up the nameptr values (if they are the only thing in the
+    # dictionary)
     fixuplist = [i for i in results.keys()
                  if (isinstance(results[i], dict) and results[i].keys()==['nameptr'])]
 
@@ -906,24 +479,38 @@ def get_hds_values(comname):
 
 
 def _hds_value_get(hdscomp):
+    """
+    Get a value from an HDS component.
+
+     - adds an '_' to any python reserved keywords.
+     - strip white space from strings.
+
+    Return tuple of name, value and type.
+    """
     name = hdscomp.name.lower()
     if iskeyword(name):
         name += '_'
     value = hdscomp.get()
+
+    # Remove white space from string objects.
     if 'char' in hdscomp.type.lower():
         if hdscomp.shape:
             value = [i.strip() for i in value]
         else:
             value = value.strip()
-    # if 'logical' in hdscomp.type.lower():
-    #     if hdscomp.shape:
-    #         value = [bool(i) for i in value]
-    #     else:
-    #         value = bool(value)
+
     type_ = hdscomp.type
     return name, value, type_
 
+
+
 def _hds_iterate_components(hdscomp):
+
+    """Iterate through HDS structure.
+
+    Return nested dictionaries representing the object.
+
+    """
     results_dict={}
     for i in range(hdscomp.ncomp):
         subcomp = hdscomp.index(i)
@@ -939,11 +526,11 @@ def _hds_iterate_components(hdscomp):
 
 
 
-
-
-
-
 def _hdstrace_print(self):
+
+    """
+    Print the results of get_hds_values prettily.
+    """
     output = []
     maxlength = len(max(self._fields, key=len))
     space = 4
@@ -959,3 +546,7 @@ def _hdstrace_print(self):
             value = i[1]
         output.append('{:>{width}}'.format(str(i[0]), width=maxlength) + ' '*space + str(value))
     return '\n'.join(output)
+
+
+
+
