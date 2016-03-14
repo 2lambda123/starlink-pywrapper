@@ -194,8 +194,15 @@ def setup_starlink_environ(starpath, adamdir,
     env['SMURF_DIR'] = os.path.join(starpath,'bin', 'smurf')
     env['KAPPA_DIR'] = os.path.join(starpath,'bin', 'kappa')
     env['CUPID_DIR'] = os.path.join(starpath,'bin','cupid')
+    env['FIGARO_DIR'] = os.path.join(starpath, 'bin', 'figaro')
+    env['CCDPACK_DIR'] = os.path.join(starpath, 'bin', 'ccdpack')
+    env['PERL5LIB'] = os.path.join(starpath, 'Perl', 'lib', 'perl5', 'site_perl') + \
+                      os.path.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5')
+
+    "/Users/sarah/star2015B-test/star-2015B/Perl/lib/perl5/site_perl:/Users/sarah/star2015B-test/star-2015B/Perl/lib/perl5"
     env['PGPLOT_DIR'] = os.path.join(starpath, 'bin')
-    for i in ['CONVERT_DIR', 'SMURF_DIR', 'KAPPA_DIR', 'CUPID_DIR', 'PGPLOT_DIR']:
+    for i in ['CONVERT_DIR', 'SMURF_DIR', 'KAPPA_DIR', 'CUPID_DIR', 'PGPLOT_DIR',
+              'FIGARO_DIR', 'CCDPACK_DIR']:
         substitution_dict[i] = env[i]
 
     env['STARLINK_DIR'] = starpath
