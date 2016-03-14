@@ -164,8 +164,11 @@ def get_module_info(hlp, iflpath):
 
         try:
             parindex = commanddoc.index('2 Parameters\n')
-            nextsec = [i for i in commanddoc[parindex+1:] if i.startswith('2')][0]
-            nextindex = commanddoc.index(nextsec)
+            try:
+                nextsec = [i for i in commanddoc[parindex+1:] if i.startswith('2')][0]
+                nextindex = commanddoc.index(nextsec)
+            except IndexError:
+                nextindex = -1
             parameter_introlines = [i for i in commanddoc[parindex+1:nextindex] if i[0] == '3']
             parameters = [commanddoc[commanddoc.index(i)+1] for i in parameter_introlines]
 
@@ -417,23 +420,30 @@ def get_command_paths(shfile, comnames, modulename, shortname):
     for c in comnames:
         # find the line in the shfile
         lines = [i for i in shfile if (c in i and shortname+'_'+c not in i)]
+        lines = [i for i in lines if i.split('()')[0].strip() == c]
         if lines:
+            if len(lines) > 1:
+                logger.warning('Found multiple commandlines  for %s: , %s' %(c, str(lines)))
             commandline = lines[0]
 
             # Find everything before the argument passing (${1+"$@"}, and after the
             # initial curly brace. Strip off the trailing and leading white space.
-            command = commandline.split('${1+"$@"}')[0].split('{')[1].strip()
+            command = commandline.split('${1+"$@"}')[0]
+            command = '{'.join(command.split('{')[1:])
+            command = command.strip()
             commanddict[c] = command
-            print command
+            print c, command
     return commanddict
 
 
 # Get info from .hlp files: best way to find out if parameter is read or write.
 starbuildpath='/export/data/sgraves/StarSoft/starlink'
-for modulename in ['kappa', 'cupid', 'convert', 'smurf']:
+for modulename in ['kappa', 'cupid', 'convert', 'smurf','figaro', 'surf','ccdpack']:
     #for modulename in ['convert']:
     print 'Creating {} module '.format(modulename)
     hlppath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.hlp')
+    if modulename == 'surf':
+        hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
     if not os.path.isfile(hlppath):
         raise StandardError('Could not find hlp file at %s' % hlppath)
     f = open(hlppath, 'r')
