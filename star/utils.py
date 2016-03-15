@@ -145,36 +145,85 @@ condict = {
     "'^name' '^type' '^fxs' '^ndf'"
     }
 
+# Starlink environ variables that are relative to STARLINK_DIR
+starlink_environdict_substitute = {
+    "ATOOLS_DIR": "bin/atools",
+    "AUTOASTROM_DIR": "Perl/bin",
+    "CCDPACK_DIR": "bin/ccdpack",
+    "CONVERT_DIR": "bin/convert",
+    "CUPID_DIR": "bin/cupid",
+    "CURSA_DIR": "bin/cursa",
+    "DAOPHOT_DIR": "bin/daophot",
+    "DATACUBE_DIR": "bin/datacube",
+    "DIPSO_DIR": "bin/dipso",
+    "ECHOMOP_DIR": "bin/echomop",
+    "ESP_DIR": "bin/esp",
+    "EXTRACTOR_DIR": "bin/extractor",
+    "FIG_DIR": "bin/figaro",
+    "FLUXES_DIR": "bin/fluxes",
+    "FROG_DIR": "starjava/bin/frog",
+    "GAIA_DIR": "bin/gaia",
+    "HDSTOOLS_DIR": "bin/hdstools",
+    "HDSTRACE_DIR": "bin",
+    "KAPPA_DIR": "bin/kappa",
+    "ORAC_DIR": "bin/oracdr/src",
+    "PAMELA_DIR": "bin/pamela",
+    "PERIOD_DIR": "bin/period",
+    "PGPLOT_DIR": "bin/",
+    "PHOTOM_DIR": "bin/photom",
+    "PISA_DIR": "bin/pisa",
+    "POLPACK_DIR": "bin/polpack",
+    "SMURF_DIR": "bin/smurf",
+    "SPLAT_DIR": "starjava/bin/splat",
+    "SST_DIR": "bin/sst",
+    "STILTS_DIR": "starjava/bin/stilts",
+    "SURF_DIR": "bin/surf",
+    "TSP_DIR": "bin/tsp",
+    "STARLINK_DIR": "",
+}
 
 
+# Not setting up the _HELP directories.
+# Also not setting up: ADAM_PACKAGES, ICL_LOGIN_SYS, FIG_HTML, PONGO_EXAMPLES,
+# Miscellaneous other ones, probably not useful (all relative to STARLINK_DIR)
+starlink_other_variables = {
+    "FIGARO_PROG_N": "bin/figaro",
+    "FIGARO_PROG_S": "etc/figaro",
+    "ORAC_CAL_ROOT": "bin/oracdr/cal",
+    "ORAC_PERL5LIB": "bin/oracdr/src/lib/perl5/",
+    "PONGO_BIN": "bin/pongo",
+    "SYS_SPECX": "share/specx",
+    }
 
 
 def setup_starlink_environ(starpath, adamdir,
                            noprompt=True):
 
+    """
+    Create a suitable ENV dict to pass to subprocess.Popen
+    """
+
     env = {}
+    env['STARLINK_DIR'] = starpath
+    env['AGI_USER'] = os.path.join(adamdir)
+    # We're running Popen with shell=False, so this may be unnecessary. I'm not sure if its needed
+    # by some starlink commands that are really scripts however, so I'm passing this anyway.
+    env['PATH'] = os.path.sep.join([os.path.join(starpath, 'bin'),
+                                    os.path.join(starpath, 'starjava', 'bin')])
+
     # Add on the STARLINK libraries to the environmental path
-    # LD_LIBRARY_PATH (linux) or DYLD_LIBRARY_PATH (mac)
-    if sys.platform == 'darwin':
-        ld_environ = 'DYLD_LIBRARY_PATH'
-        javapaths = [os.path.join(starpath,'starjava', 'lib','i386'),
-                     os.path.join(starpath, 'starjava', 'lib', 'x86_64')]
-    elif sys.platform != 'darwin':
+    # Skip if on Mac, where we shouldn't need DYLD_LIBRARY_PATH?
+    #if sys.platform == 'darwin':
+    #    ld_environ = 'DYLD_LIBRARY_PATH'
+    #    javapaths = [os.path.join(starpath,'starjava', 'lib','i386'),
+    #                 os.path.join(starpath, 'starjava', 'lib', 'x86_64')]
+    if sys.platform != 'darwin':
         ld_environ = 'LD_LIBRARY_PATH'
         javapaths = [os.path.join(starpath, 'starjava', 'lib', 'amd64')]
 
-
-    starlib = os.path.join(starpath, 'lib')
-
-    #ldpath = env[ld_environ].split(os.path.pathsep)
-    ldpath = []
-    if not starlib in ldpath:
-        ldpath.append(starlib)
-    for jp in javapaths:
-        if not jp in ldpath:
-            ldpath.append(jp)
-
-    env[ld_environ] = os.path.pathsep.join(ldpath)
+        starlib = os.path.join(starpath, 'lib')
+        starldlibpath = os.path.pathsep.join([starlib] + javapaths)
+        env[ld_environ] = starldlibpath
 
     # Don't ever prompt user for input.
     if noprompt:
@@ -186,26 +235,21 @@ def setup_starlink_environ(starpath, adamdir,
     # Set this ADAM_USER to be used
     env['ADAM_USER'] = adamdir
 
-    # add these to the environment variables
+    # Add the CONVERT environ variables to the env.
     env.update(condict)
 
-    # Set up various starlink variables -- not all of these are probably needed...
-    env['CONVERT_DIR'] = os.path.join(starpath,'bin', 'convert')
-    env['SMURF_DIR'] = os.path.join(starpath,'bin', 'smurf')
-    env['KAPPA_DIR'] = os.path.join(starpath,'bin', 'kappa')
-    env['CUPID_DIR'] = os.path.join(starpath,'bin','cupid')
-    env['FIGARO_DIR'] = os.path.join(starpath, 'bin', 'figaro')
-    env['CCDPACK_DIR'] = os.path.join(starpath, 'bin', 'ccdpack')
+    # Set up various starlink variables
+    # Package directories -- e.g. KAPPA_DIR etc names
+    for module_env, modulepath in starlink_environdict_substitute.items():
+        env[module_env] = os.path.join(starpath, modulepath)
+
+    for environvar, relvalue in starlink_other_variables.items():
+        env[environvar] = os.path.join(starpath, relvalue)
+
+        # Perl 5 libraries:
     env['PERL5LIB'] = os.path.join(starpath, 'Perl', 'lib', 'perl5', 'site_perl') + \
                       os.path.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5')
 
-    "/Users/sarah/star2015B-test/star-2015B/Perl/lib/perl5/site_perl:/Users/sarah/star2015B-test/star-2015B/Perl/lib/perl5"
-    env['PGPLOT_DIR'] = os.path.join(starpath, 'bin')
-    for i in ['CONVERT_DIR', 'SMURF_DIR', 'KAPPA_DIR', 'CUPID_DIR', 'PGPLOT_DIR',
-              'FIGARO_DIR', 'CCDPACK_DIR']:
-        substitution_dict[i] = env[i]
-
-    env['STARLINK_DIR'] = starpath
 
     # Note that this will still only write error messages to stdin,
     # not to stderr.
@@ -257,7 +301,7 @@ def starcomm(command, commandname, *args, **kwargs):
     #    kwargs['quiet'] = QUIET
 
     returnStdOut = kwargs.get('returnStdOut', False)
-        
+
     # Turn args and kwargs into a single list appropriate for sending to
     # subprocess.Popen.
     arg = _make_argument_list(*args, **kwargs)
@@ -268,11 +312,13 @@ def starcomm(command, commandname, *args, **kwargs):
     try:
         logger.debug([command]+arg)
 
-        for i in substitution_dict.keys():
-            command = command.replace('$' + i, substitution_dict[i])
-            command = command.replace('${' + i + '}', substitution_dict[i])
-                
-        # Call the process: note errors are written to stdout rather
+        # Replace things like ${KAPPA_DIR} and $KAPPA_DIR with the
+        # KAPPA_DIR value.
+        for i, j in starlink_environdict_substitute.items():
+            command = command.replace('$' + i, env[i])
+            command = command.replace('${' + i + '}', env[i])
+
+            # Call the process: note errors are written to stdout rather
         # than stderr, so we have to redirect that as well.
         proc = subprocess.Popen([command]+arg, env=env, shell=False,
                                 stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -287,13 +333,15 @@ def starcomm(command, commandname, *args, **kwargs):
                                 'stdout and stderr are appended below.\n'
                                 + stdout + '\n' + stderr)
         else:
+
+            # Show stdout as a debug log.
             if stdout != '':
                 logger.debug(stdout)
 
             # Get the parameters for the command from $ADAMDIR/commandname.sdf:
             result = hdsutils.get_hds_values(commandname, adamdir)
 
-            # If the magic kewyrod 
+            # If the magic keyword returnStdOut was set:
             if returnStdOut:
                 result = (result, stdout)
 
@@ -357,23 +405,22 @@ def _make_argument_list(*args, **kwargs):
 
 #-------------
 
-# Setup the adamdirectory:
-
-# Get the starpath
-
+# Values for finding out if the package is inside a Starlin installation.
 relative_testfile = '../../bin/smurf/makemap'
 testfile_to_starlink = '../../../'
+
+# Setup the default values (user could change default_starpath in the
+# file if wanted?)
 default_starpath = None
 starpath = None
 env = None
-substitution_dict = {}
 
 if default_starpath:
     starpath = default_starpath
     logger.info('Using default Starlink path {}'.format(starpath))
 else:
     try:
-        starpath = os.path.join(os.environ['STARLINK_DIR'])
+        starpath = os.path.abspath(os.environ['STARLINK_DIR'])
         logger.info('Using $STARLINK_DIR starlink at {}'.format(starpath))
     except KeyError:
         # See if we are installed inside a starlink system?  Very
@@ -392,8 +439,6 @@ else:
 adamdir = os.path.relpath(tempfile.mkdtemp(prefix='tmpADAM', dir=os.getcwd()))
 atexit.register(shutil.rmtree, adamdir)
 
-
 # Actually setup starlink environment
 if starpath:
     env = setup_starlink_environ(starpath,  adamdir)
-    
