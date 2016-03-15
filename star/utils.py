@@ -246,10 +246,16 @@ def setup_starlink_environ(starpath, adamdir,
     for environvar, relvalue in starlink_other_variables.items():
         env[environvar] = os.path.join(starpath, relvalue)
 
-        # Perl 5 libraries:
+    # Perl 5 libraries:
     env['PERL5LIB'] = os.path.join(starpath, 'Perl', 'lib', 'perl5', 'site_perl') + \
                       os.path.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5')
 
+    # PATH needs to be set, although note that we are running
+    # subprocess with shell=False.
+    env['PATH'] = os.path.join(starpath, 'bin')
+    # Add DISPLAY, for X stuff
+    if os.environ.has_key('DISPLAY'):
+        env['DISPLAY'] = os.environ['DISPLAY']
 
     # Note that this will still only write error messages to stdin,
     # not to stderr.
