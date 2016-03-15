@@ -223,6 +223,7 @@ def make_docstrings(moduledict):
         param = info.pardict
 
         positional = []
+        allpositional = []
         inputpar = []
         outputpar = []
         unknownpar = []
@@ -246,8 +247,13 @@ def make_docstrings(moduledict):
                     temp[3] = default
                     i = parinfo(*temp)
 
+                # Get lsit of everything that is positional
+                if i.position:
+                    allpositional.append(i)
+
                 # Anything with a position and no default and vapth,
-                # or with vpath=PROMPT is a positional argument
+                # or with vpath starting with PROMPT is a positional
+                # argument.
                 if i.position and (
                         (i.vpath is None and i.default is None) or
                         (i.vpath is not None and i.vpath.strip().startswith('PROMPT'))):
@@ -256,7 +262,7 @@ def make_docstrings(moduledict):
                 # Anything else labelled 'read', 'given' or 'update' is an input keyword.
                 # Anything with 'write' is only a input value if:
                 #    type_=NDF
-                #  or type='LITERAL and association='CATAL'
+                #  or type='LITERAL and association contains 'CATAL'
                 #  or type='LITERAL' and ppath contains CURRENT.
 
                 elif (readwrite == 'read' or
@@ -276,6 +282,25 @@ def make_docstrings(moduledict):
                 else:
                     unknownpar.append(i)
                     #print('Unknown par %s: ' %(name), i)
+
+        if allpositional and positional:
+
+            # Positional kwargs must have list of indexes without gap.
+            positions = [int(i.position) for i in positional]
+            positions.sort()
+            if max(positions) != len(positions):
+                print 'PROBLEM: command {} has improbably positional arguments'.format(name)
+                print [(i.name, i.position) for i in positional]
+
+                # find positional parameters that need to be moved:
+                missing_index = min([i for i in range(1,len(positions)+1) if i not in positions])
+                print missing_index
+                parameters_to_move = [i for i in positional if int(i.position) >= missing_index]
+                for p in parameters_to_move:
+                    positional.remove(p)
+                    inputpar.append(p)
+                    print p.name
+
 
         if positional:
             doc += ['Args:']
@@ -383,8 +408,9 @@ classheaders = """
 by python-starscripts/generate_functions.py.
 \"\"\"
 
-import utils
+from . import utils
 """
+docrunline = 'Tries to run the command: {} .'
 
 def create_class(module, names, docstrings, commanddict):
     #classcode = ['class {}(object):'.format(module),
@@ -394,16 +420,22 @@ def create_class(module, names, docstrings, commanddict):
     classcode = []
 
     for name in names:
+        commandline = commanddict[name]
+        callsignature = docstrings[name][1]
+        docstring = docstrings[name][0]
+        # Add a line indicating which binary/script it is trying to run to docstring.
+        docstring = docstring.split('\n')
+        docstring = [docstring[0], '', docrunline.format(commandline)] + docstring[1:]
 
         methodcode = [
              #' '*4 + '@staticmethod',
-             ' '*0 + 'def {}({}):'.format(name, docstrings[name][1]),
+             ' '*0 + 'def {}({}):'.format(name, callsignature),
              ' '*4 + '"""',
-             '\n'.join([i if not i else ' '*4 + i  for i in docstrings[name][0].split('\n')]),
+             '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
              '        """',
-             ' '*4 + 'return utils.starcomm("{}", "{}", {})'.format(commanddict[name],
+             ' '*4 + 'return utils.starcomm("{}", "{}", {})'.format(commandline,
                                                               name,
-                                                              docstrings[name][1]),
+                                                                    callsignature),
              '\n',
         ]
 
@@ -431,21 +463,33 @@ def get_command_paths(shfile, comnames, modulename, shortname):
             command = commandline.split('${1+"$@"}')[0]
             command = '{'.join(command.split('{')[1:])
             command = command.strip()
+
+            # If command starts with 'python ', strip off 'python '
+            if command.startswith('python '):
+                command = command.lstrip('python ')
+
+            # if command starts with 'starperl ', replace with $STARLINK_DIR/bin/starperl
+            if command.startswith('starperl '):
+                command = command.replace('starperl ', '${STARLINK_DIR}/bin/starperl ')
+            if not command.startswith('$'):
+                print c, command
             commanddict[c] = command
-            print c, command
     return commanddict
 
 
 # Get info from .hlp files: best way to find out if parameter is read or write.
 starbuildpath='/export/data/sgraves/StarSoft/starlink'
 for modulename in ['kappa', 'cupid', 'convert', 'smurf','figaro', 'surf','ccdpack']:
-    #for modulename in ['convert']:
-    print 'Creating {} module '.format(modulename)
+
+    logger.info('Creating {} module '.format(modulename))
+
     hlppath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.hlp')
     if modulename == 'surf':
         hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
+
     if not os.path.isfile(hlppath):
         raise StandardError('Could not find hlp file at %s' % hlppath)
+
     f = open(hlppath, 'r')
     helpfile = f.readlines()
     f.close()
