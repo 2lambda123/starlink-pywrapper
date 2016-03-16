@@ -206,10 +206,6 @@ def setup_starlink_environ(starpath, adamdir,
     env = {}
     env['STARLINK_DIR'] = starpath
     env['AGI_USER'] = os.path.join(adamdir)
-    # We're running Popen with shell=False, so this may be unnecessary. I'm not sure if its needed
-    # by some starlink commands that are really scripts however, so I'm passing this anyway.
-    env['PATH'] = os.path.sep.join([os.path.join(starpath, 'bin'),
-                                    os.path.join(starpath, 'starjava', 'bin')])
 
     # Add on the STARLINK libraries to the environmental path
     # Skip if on Mac, where we shouldn't need DYLD_LIBRARY_PATH?
@@ -228,6 +224,7 @@ def setup_starlink_environ(starpath, adamdir,
     # Don't ever prompt user for input.
     if noprompt:
         env["ADAM_NOPROMPT"] = "1"
+        env["STARUTIL_NOPROMPT"] = "1"
 
     # Produce error codes if starlink command fails.
     env['ADAM_EXIT'] = '1'
