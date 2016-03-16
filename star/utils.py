@@ -227,6 +227,8 @@ def setup_starlink_environ(starpath, adamdir,
         env["STARUTIL_NOPROMPT"] = "1"
 
     # Produce error codes if starlink command fails.
+    # Note that this will still only write error messages to stdin,
+    # not to stderr.
     env['ADAM_EXIT'] = '1'
 
     # Set this ADAM_USER to be used
@@ -247,15 +249,16 @@ def setup_starlink_environ(starpath, adamdir,
     env['PERL5LIB'] = os.path.join(starpath, 'Perl', 'lib', 'perl5', 'site_perl') + \
                       os.path.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5')
 
-    # PATH needs to be set, although note that we are running
-    # subprocess with shell=False.
-    env['PATH'] = os.path.join(starpath, 'bin')
+    # Setting up the Path (note that we are using shell=False)
+    originalpath = os.environ['PATH']
+    env['PATH'] = os.path.pathsep.join([os.path.join(starpath, 'bin'),
+                                    os.path.join(starpath, 'starjava', 'bin'),
+                                    originalpath])
+
     # Add DISPLAY, for X stuff
     if os.environ.has_key('DISPLAY'):
         env['DISPLAY'] = os.environ['DISPLAY']
 
-    # Note that this will still only write error messages to stdin,
-    # not to stderr.
     return env
 
 
@@ -269,10 +272,10 @@ def starcomm(command, commandname, *args, **kwargs):
     starlink parameter values (taken from $ADAM_DIR/<com>.sdf
 
     Args:
-        command (str): path of command, e.g. '$KAPPADIR/stats' or '$SMURFDIR/makecube'
-        commandname (str): name of command (used for getting output valeus)
+        command (str): path of command to run, e.g. '$SMURFDIR/makecube'
+        commandname (str): name of command (used for getting output values)
 
-    Kwargs:
+    Keyword arguments;
         returnStdOut (bool): return the commands std out as string
 
     Other arguments and keyword arguments are evaluated by the command
@@ -327,6 +330,8 @@ def starcomm(command, commandname, *args, **kwargs):
                                 stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         status = proc.returncode
+        if stderr:
+            logger.info(stderr)
 
         # If there was an error, raise a python error and print the
         # starlink output to screen.
@@ -338,7 +343,7 @@ def starcomm(command, commandname, *args, **kwargs):
         else:
 
             # Show stdout as a debug log.
-            if stdout != '':
+            if stdout:
                 logger.debug(stdout)
 
             # Get the parameters for the command from $ADAMDIR/commandname.sdf:
