@@ -414,7 +414,7 @@ def create_module(module, names, docstrings, commanddict, sunname):
 
     modulecode = []
     moduleheader = '\n'.join(['"""', moduleline.format(module), '"""', '',
-                              'from . import utils', '', ''])
+                              'from . import wrapper', '', ''])
 
     for name in names:
         commandline = commanddict[name]
@@ -434,7 +434,7 @@ def create_module(module, names, docstrings, commanddict, sunname):
              ' '*4 + '"""',
              '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
              '        """',
-             ' '*4 + 'return utils.starcomm("{}", "{}", {})'.format(commandline,
+             ' '*4 + 'return wrapper.starcomm("{}", "{}", {})'.format(commandline,
                                                               name,
                                                                     callsignature),
              '\n',
