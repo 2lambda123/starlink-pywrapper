@@ -47,7 +47,7 @@ def get_fitshdr(datafile, form='sdf'):
         hdr = fits.getheader(datafile)
 
     else:
-        raise StandardError('Unknown file format %s: form must be "sdf" or "fits"' %  form)
+        raise Exception('Unknown file format %s: form must be "sdf" or "fits"' %  form)
 
     return hdr
 

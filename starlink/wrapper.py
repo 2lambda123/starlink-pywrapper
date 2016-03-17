@@ -279,7 +279,7 @@ def setup_starlink_environ(starpath, adamdir,
                                     originalpath])
 
     # Add DISPLAY, for X stuff
-    if os.environ.has_key('DISPLAY'):
+    if 'DISPLAY' in os.environ:
         env['DISPLAY'] = os.environ['DISPLAY']
 
     return env
@@ -375,7 +375,7 @@ def starcomm(command, commandname, *args, **kwargs):
         # If there was an error, raise a python error and print the
         # starlink output to screen.
         if status != 0:
-            raise StandardError('Starlink error occured during command:\n'
+            raise Exception('Starlink error occured during command:\n'
                                 '%s %s\n ' % (command, arg) +
                                 'stdout and stderr are appended below.\n'
                                 + stdout + '\n' + stderr)
@@ -406,12 +406,12 @@ def starcomm(command, commandname, *args, **kwargs):
 
 
 
-class StarError(StandardError):
+class StarError(Exception):
     def __init__(self, command, arg, stderr):
         message = 'Starlink error occured during:\n %s %s\n ' % (commandh, arg)
         message += '\nThere should be an error message printed to stdout '
         message += '(check above this traceback in ipython)'+stderr
-        StandardError.__init__(self, message)
+        Exception.__init__(self, message)
 
 
 def _make_argument_list(*args, **kwargs):

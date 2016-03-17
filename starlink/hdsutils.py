@@ -11,7 +11,6 @@ def get_hds_values(comname, adamdir):
     from the ADAMDIR/commname.sdf hds file.
     """
 
-    
     filename = os.path.join(adamdir, comname)
     try:
         hdsobj = hds.open(filename, 'READ')
@@ -19,7 +18,7 @@ def get_hds_values(comname, adamdir):
         results = _hds_iterate_components(hdsobj)
 
         # Remove the 'ADAM_DYNDEF' component as it never exits?
-        if results.has_key('adam_dyndef'):
+        if 'adam_dyndef' in  results:
             results.pop('adam_dyndef')
 
         # Fix up the nameptr values (if they are the only thing in the

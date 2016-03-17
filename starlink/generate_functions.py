@@ -108,7 +108,7 @@ def _ifl_parser(ifllines, parameter_info, comname=''):
             values.append(val)
 
         # Assign output values from input information
-        if parameter_info and parameter_info.has_key(parname):
+        if parameter_info and parname in parameter_info:
             pinfo = parameter_info[parname]
             values.append(pinfo.list_)
             values.append(pinfo.readwrite)
@@ -473,7 +473,7 @@ def get_command_paths(shfile, comnames, modulename, shortname):
             if command.startswith('starperl '):
                 command = command.replace('starperl ', '${STARLINK_DIR}/bin/starperl ')
             if not command.startswith('$'):
-                print c, command
+                print(c, command)
             commanddict[c] = command
     return commanddict
 
@@ -501,7 +501,7 @@ if __name__ == '__main__':
             hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
 
         if not os.path.isfile(hlppath):
-            raise StandardError('Could not find hlp file at %s' % hlppath)
+            raise Exception('Could not find hlp file at %s' % hlppath)
 
         f = open(hlppath, 'r')
         helpfile = f.readlines()
@@ -518,9 +518,9 @@ if __name__ == '__main__':
         shortname = modulename
         if modulename == 'convert':
             shortname = 'con'
-        if moduledict.has_key(modulename):
+        if modulename in  moduledict:
             moduledict.pop(modulename)
-        if moduledict.has_key(shortname + '_help'):
+        if shortname + '_help' in  moduledict:
             moduledict.pop(shortname + '_help')
         commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
         docstrings = make_docstrings(moduledict, sunnames.get(modulename, None))
