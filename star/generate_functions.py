@@ -190,10 +190,7 @@ def get_module_info(hlp, iflpath):
                 # So far we only have the readwrite information.
                 parameter_info[pname] = parinfo(pname, *([None]*10 + [plist] + [ptype]))
 
-
-
         except ValueError:
-            #print('command %s has no parameters???' % comname)
             parameter_info = None
 
         moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
@@ -212,18 +209,62 @@ def get_module_info(hlp, iflpath):
 
     return moduledict
 
+def formatkeyword(vals, style='numpy'):
 
-def make_docstrings(moduledict):
+    """
+    format keyword for numpy docstring.
+
+    vals should be a parinfo object
+    style should be 'numpy' or 'google'
+
+    Returns a list of strings.
+    """
+    name = vals.name
+
+    if iskeyword(name):
+        name += '_'
+    if name[-1] == '_':
+        name = '`{}`'.format(name)
+
+    # Format the first line (varanme : type, min-max)
+    typestring = _get_python_type(vals.type_)
+    if vals.list_:
+        typestring = 'List[{}]'.format(typestring)
+    if vals.range_:
+        typestring = ', {}'.format('-'.join(vals.range_.split(',')))
+    if style == 'numpy':
+        parstring = '{} : {}'.format(name.lower(), typestring)
+    elif style == 'google':
+        parstring = '{} ({})'.format(name.lower(), typestring)
+    doc = [parstring]
+    # Format the prompt (if it exists)
+    promptstring = ''
+    if vals.prompt:
+        promptstring = vals.prompt
+    if vals.default:
+        promptstring = '{} [{}]'.format(promptstring, vals.default)
+
+    if promptstring:
+        if style=='numpy':
+            doc += [' '*4  + promptstring]
+        elif style=='google':
+            doc[0] += ': {}'.format(promptstring)
+    return doc
+
+def make_docstrings(moduledict, sunname=None):
+
+    """
+    Create the docstrings for a command.
+    """
 
     docstringdict = {}
-    # make a command for each smurf command
+    # make a command for each command
     for command, info in moduledict.items():
         name = command
         doc = [info.description + '\n']
         param = info.pardict
 
         positional = []
-        allpositional = []
         inputpar = []
         outputpar = []
         unknownpar = []
@@ -247,9 +288,6 @@ def make_docstrings(moduledict):
                     temp[3] = default
                     i = parinfo(*temp)
 
-                # Get lsit of everything that is positional
-                if i.position:
-                    allpositional.append(i)
 
                 # Anything with a position and no default and vapth,
                 # or with vpath starting with PROMPT is a positional
@@ -261,14 +299,14 @@ def make_docstrings(moduledict):
 
                 # Anything else labelled 'read', 'given' or 'update' is an input keyword.
                 # Anything with 'write' is only a input value if:
-                #    type_=NDF
+                #    type_=NDF or type_=FILENAME
                 #  or type='LITERAL and association contains 'CATAL'
                 #  or type='LITERAL' and ppath contains CURRENT.
-
                 elif (readwrite == 'read' or
                       readwrite == 'given' or
                       readwrite == 'update' or
                       (readwrite == 'write' and i.type_ is not None and 'NDF' in i.type_) or
+                      (readwrite == 'write' and i.type_ is not None and 'FILENAME' in i.type_) or
                       (readwrite == 'write' and i.type_ is not None and 'LITERAL' in i.type_ and
                        i.association is not None and 'CATAL' in i.association) or
                       (readwrite == 'write' and i.type_ is not None and 'LITERAL' in i.type_ and
@@ -280,52 +318,39 @@ def make_docstrings(moduledict):
                 elif readwrite == 'write':
                     outputpar.append(i)
                 else:
-                    unknownpar.append(i)
-                    #print('Unknown par %s: ' %(name), i)
+                    # Assume anything else is an input keyword parameter
+                    inputpar.append(i)
+                    #unknownpar.append(i)
 
-        if allpositional and positional:
+
+        if  positional:
 
             # Positional kwargs must have list of indexes without gap.
             positions = [int(i.position) for i in positional]
             positions.sort()
             if max(positions) != len(positions):
-                print 'PROBLEM: command {} has improbably positional arguments'.format(name)
-                print [(i.name, i.position) for i in positional]
+                logger.warning('PROBLEM: command {} has improbably positional arguments'.format(name))
+                logger.warning([(i.name, i.position) for i in positional])
 
                 # find positional parameters that need to be moved:
                 missing_index = min([i for i in range(1,len(positions)+1) if i not in positions])
-                print missing_index
                 parameters_to_move = [i for i in positional if int(i.position) >= missing_index]
                 for p in parameters_to_move:
                     positional.remove(p)
                     inputpar.append(p)
-                    print p.name
 
 
         if positional:
-            doc += ['Args:']
+            heading = 'Arguments'
+            heading = [heading, '-'*len(heading)]
+            doc += heading
 
             # sort positional
             positional = sorted(positional, key=lambda x: x.position)
             names = [i.name + '_' if iskeyword(i.name) else i.name for i in positional]
-            for vals in positional:
-                inp = vals.name
-                if iskeyword(inp):
-                    inp += '_'
-                python_type = _get_python_type(vals.type_)
-
-                if vals.list_:
-                    python_type = 'List[' + python_type + ']'
-
-                range_ = ''
-                if vals.range_ is not None:
-                    range_ = ', ' + '-'.join(vals.range_.split(','))
-                parstring = ' '*4 + inp.lower() + ' (' + python_type + range_ +'): '
-                if vals.prompt:
-                    parstring += vals.prompt
-                if vals.default:
-                    parstring += ' [' + vals.default + ']'
-                doc +=[parstring]
+            for val in positional:
+                valdoc = formatkeyword(val)
+                doc += valdoc
             doc +=['']
 
             callsignature = ', '.join(names) + ', **kwargs'
@@ -338,97 +363,73 @@ def make_docstrings(moduledict):
             inputpar = sorted(inputpar, key=lambda x: int(x.position) if
                               x.position is not None else 1000, reverse=False)
 
-            doc += ['kwargs:']
-            for vals in inputpar:
-                inp = vals.name
-                if iskeyword(inp):
-                    inp += '_'
-                python_type = _get_python_type(vals.type_)
+            heading = 'Keyword Arguments'
+            heading = [heading, '-'*len(heading)]
+            doc += heading
 
-                if vals.list_:
-                    python_type = 'List[' + python_type + ']'
-                range_ = ''
-                if vals.range_:
-                    range_ = ', '+'-'.join(vals.range_.split(','))
-                parstring = ' '*4 + inp.lower() +' (' + python_type + range_ + ')'
-                if vals.prompt:
-                    parstring += ': ' + vals.prompt
-                if vals.position:
-                    parstring += ' (posit: %i)'% int(vals.position)
-                if vals.default:
-                    parstring += ' [' + vals.default + ']'
-                doc += [parstring]
+            for val in inputpar:
+                valdoc = formatkeyword(val)
+                doc += valdoc
             doc += ['']
 
-        if unknownpar:
-            doc +=['other args:']
-            for vals in unknownpar:
-                inp = vals.name
-                if iskeyword(inp):
-                    inp = inp + '_'
-                python_type = _get_python_type(vals.type_)
-
-                if vals.list_:
-                    python_type = 'List[' + python_type + ']'
-
-                parstring = ' '*4 + inp.lower() +' (' + python_type + ')'
-                if vals.prompt:
-                    parstring += ': ' + vals.prompt
-                if vals.default:
-                    parstring += ' [' + vals.default + ']'
-                doc += [parstring]
-            doc += ['']
 
         if outputpar:
-            doc +=['output:']
+            heading = 'Returns'
+            heading = [heading, '-'*len(heading)]
+            doc += heading
+
             outputpar = sorted(outputpar, key=lambda x: x.name)
-            for vals in outputpar:
-                outp = vals.name
-                if iskeyword(outp):
-                    inp = outp + '_'
-                python_type = _get_python_type(vals.type_)
 
-                if vals.list_:
-                    python_type = 'List[' + python_type + ']'
+            for val in outputpar:
+                valdoc = formatkeyword(val)
+                doc += valdoc
+            doc += ['']
 
-                parstring = ' '*4 + outp.lower() +' (' + python_type + ')'
-                if vals.prompt:
-                    parstring += ': ' + vals.prompt
-                doc += [parstring]
-            doc +=['']
 
-        # ACtually, all callsignatures should be '*args, **kwargs'
+        if sunname:
+            # Add Note section with SUN documentation.
+            heading = 'Notes'
+            heading = [heading, '-'*len(heading)]
+            doc += heading
+            sunurl = 'http://www.starlink.ac.uk/cgi-bin/htxserver/{}.htx/{}.html?xref_{}'.format(
+                sunname, sunname, name.upper())
+            doc += ['See {} for full documentation of this command in the latest Starlink release'.format(
+                sunurl)]
+            doc += ['']
+
+        # Return a dictionary for each command, with the docstrings
+        # and the call signature.
         docstringdict[name] = ('\n'.join(doc), callsignature)
     return docstringdict
 
 
 
-classheaders = """
-\"\"\" Autogenerated from the starlink .hlp and .ifl files,
-by python-starscripts/generate_functions.py.
-\"\"\"
+moduleline = "Runs commands from the Starlink {} package.\n\n"\
+             "Autogenerated from the starlink .hlp and .ifl files," \
+             "\nby python-starscripts/generate_functions.py."
 
-from . import utils
-"""
-docrunline = 'Tries to run the command: {} .'
+docrunline = 'Runs the command: {} .'
 
-def create_class(module, names, docstrings, commanddict):
-    #classcode = ['class {}(object):'.format(module),
-    #             ' '*4 +'"""Run commands from the {} module"""'.format(module.upper()),
-    #             '\n',]
+def create_module(module, names, docstrings, commanddict, sunname):
 
-    classcode = []
+    modulecode = []
+    moduleheader = '\n'.join(['"""', moduleline.format(module), '"""', '',
+                              'from . import utils', '', ''])
 
     for name in names:
         commandline = commanddict[name]
         callsignature = docstrings[name][1]
         docstring = docstrings[name][0]
+
         # Add a line indicating which binary/script it is trying to run to docstring.
         docstring = docstring.split('\n')
         docstring = [docstring[0], '', docrunline.format(commandline)] + docstring[1:]
 
+        # Append _ to the end of reserved python keywords.
+        if iskeyword(name):
+            name = name + '_'
+
         methodcode = [
-             #' '*4 + '@staticmethod',
              ' '*0 + 'def {}({}):'.format(name, callsignature),
              ' '*4 + '"""',
              '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
@@ -440,10 +441,10 @@ def create_class(module, names, docstrings, commanddict):
         ]
 
         methodcode = ['\n' if i.isspace() else i for i in methodcode]
-        classcode += methodcode
+        modulecode += methodcode
 
     f = open(module + '.py', 'w')
-    f.writelines('\n'.join([classheaders] + classcode))
+    f.writelines('\n'.join([moduleheader] + modulecode))
     f.close()
 
 
@@ -477,38 +478,53 @@ def get_command_paths(shfile, comnames, modulename, shortname):
     return commanddict
 
 
-# Get info from .hlp files: best way to find out if parameter is read or write.
-starbuildpath='/export/data/sgraves/StarSoft/starlink'
-for modulename in ['kappa', 'cupid', 'convert', 'smurf','figaro', 'surf','ccdpack']:
-
-    logger.info('Creating {} module '.format(modulename))
-
-    hlppath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.hlp')
-    if modulename == 'surf':
-        hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
-
-    if not os.path.isfile(hlppath):
-        raise StandardError('Could not find hlp file at %s' % hlppath)
-
-    f = open(hlppath, 'r')
-    helpfile = f.readlines()
-    f.close()
-    shpath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.sh')
-    f = open(shpath, 'r')
-    shfile = f.readlines()
-    f.close()
-    moduledict = get_module_info(helpfile, os.path.join(starbuildpath, 'applications',modulename))
-
-    shortname = modulename
-    if modulename == 'convert':
-        shortname = 'con'
-    if moduledict.has_key(modulename):
-        moduledict.pop(modulename)
-    if moduledict.has_key(shortname + '_help'):
-        moduledict.pop(shortname + '_help')
-    commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
-    docstrings = make_docstrings(moduledict)
+sunnames = {
+    'kappa': 'sun95',
+    'cupid': 'sun255',
+    'convert': 'sun55',
+    'smurf': 'sun258',
+    'smurf': 'sun86',
+    'surf': 'sun216',
+    'ccdpack': 'sun139',
+}
 
 
-    create_class(modulename, commanddict.keys(), docstrings, commanddict)
+if __name__ == '__main__':
+    # Get info from .hlp files: best way to find out if parameter is read or write.
+    starbuildpath='/export/data/sgraves/StarSoft/starlink'
+    for modulename in ['kappa', 'cupid', 'convert', 'smurf','figaro', 'surf','ccdpack']:
+
+        logger.info('Creating {} module '.format(modulename))
+
+        hlppath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.hlp')
+        if modulename == 'surf':
+            hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
+
+        if not os.path.isfile(hlppath):
+            raise StandardError('Could not find hlp file at %s' % hlppath)
+
+        f = open(hlppath, 'r')
+        helpfile = f.readlines()
+        f.close()
+        shpath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.sh')
+        f = open(shpath, 'r')
+        shfile = f.readlines()
+        f.close()
+        iflpath = os.path.join(starbuildpath, 'applications', modulename)
+        if modulename == 'figaro':
+            iflpath = os.path.join(starbuildpath, 'applications', 'figaro', 'figaroiflfiles')
+        moduledict = get_module_info(helpfile, iflpath)
+
+        shortname = modulename
+        if modulename == 'convert':
+            shortname = 'con'
+        if moduledict.has_key(modulename):
+            moduledict.pop(modulename)
+        if moduledict.has_key(shortname + '_help'):
+            moduledict.pop(shortname + '_help')
+        commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
+        docstrings = make_docstrings(moduledict, sunnames.get(modulename, None))
+
+
+        create_module(modulename, commanddict.keys(), docstrings, commanddict, sunnames.get(modulename, None))
 
