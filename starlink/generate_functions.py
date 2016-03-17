@@ -525,6 +525,7 @@ if __name__ == '__main__':
         commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
         docstrings = make_docstrings(moduledict, sunnames.get(modulename, None))
 
-
-        create_module(modulename, commanddict.keys(), docstrings, commanddict, sunnames.get(modulename, None))
+        commandnames = list(commanddict.keys())
+        commandnames.sort()
+        create_module(modulename, commandnames, docstrings, commanddict, sunnames.get(modulename, None))
 
