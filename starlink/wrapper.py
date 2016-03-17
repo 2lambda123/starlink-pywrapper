@@ -14,8 +14,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Low level functions for running Starlink commands from python.
+
+"""Module for carrying out starlink commands within python.
+
+This uses subprocess.Popen to carry out starlink commands.
+
+This module allows you to use a standard formatted keyword arguments
+to call the starlink commands. Shell escapes do not to be used.
+
+By default it will create a new temporary adam directory in the
+current folder, and use that as the adam directory for the starlink
+processes.
+
+This code was written to allow quick calling of kappa, smurf and cupid
+in the way I usually think about them from python scripts, with
+regular keyword variables.
+
+Its recommended to set STARLINK_DIR in your environment before opening
+python to run this software.
 
 """
 
@@ -38,10 +54,17 @@ from . import hdsutils
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-testvariable = True
 
 
-# Subprocess fix for sig pipe? Attempt to solve a problem
+# Default starpath to use (if installing outside of Starlink, you may
+# wish to set this to the location of your $STARLINK_DIR).
+default_starpath = None
+
+
+
+# Subprocess fix for sig pipe? Attempt to solve zombie monolith problem.
+# TODO check if this should be used?
+# Graham thinks it should be given to preexec_fn.
 def subprocess_setup():
     # Python installs a SIGPIPE handler by default. This is usually
     # not what non-Python subprocesses expect.
@@ -261,6 +284,21 @@ def setup_starlink_environ(starpath, adamdir,
 
     return env
 
+def change_starpath(starlinkdir):
+    """
+    Change the $STARLINK_DIR used by this module.
+
+    Note that this needs to change the module level env and starpath
+    variables.
+
+    """
+
+    global env
+    global starpath
+    env = setup_starlink_environ(starlinkdir,
+                                 adamdir,
+                                 noprompt=True)
+    starpath = starlinkdir
 
 
 
@@ -280,20 +318,21 @@ def starcomm(command, commandname, *args, **kwargs):
 
     Other arguments and keyword arguments are evaluated by the command
     being called. Please see the Starlink documentation for the command.
+    The standard Starlink package environmental varaibles (e.g. KAPPA_DIR,
+    SMURF_DIR etc.) can be used inside the command name.
 
     Returns:
        namedtuple: all the input and output params for this command.
-
-       (if returnStdOut=True: also returns the stdout as a string, in form:
-       (namedtuple, stdout) = starcomm(command *args, **kwargs)
+       stdout: the stdout as a string
+          (only returned if the keyword returnStdOut is True)
 
     Usage:
-        res = star('kappa', 'stats', ndf='myndf.sdf', order=True)
+        res = starcomm('$KAPPA_DIR/stats', 'stats', ndf='myndf.sdf')
 
     Notes:
-
-       Starlink keywords that are reserved python names (e.g. 'in')
-       can be called by appending an underscore. E.g.: in_='myndf.sdf'.
+       Starlink parameters or functions that are reserved python names
+       (e.g. 'in') can be called by appending an underscore. E.g.:
+       in_='myndf.sdf'.
 
     """
 
@@ -312,8 +351,9 @@ def starcomm(command, commandname, *args, **kwargs):
     # subprocess.Popen.
     arg = _make_argument_list(*args, **kwargs)
 
-    #if RESET:
-    #    arg += ['RESET']
+    ## Append 'RESET' to args list?
+    # This doesn't work with starutil python scripts, e.g. jsasplit...
+    #arg += ['RESET']
 
     try:
         logger.debug([command]+arg)
@@ -413,16 +453,15 @@ def _make_argument_list(*args, **kwargs):
 
 #-------------
 
-# Values for finding out if the package is inside a Starlin installation.
+# Values for finding out if the package is inside a Starlink installation.
 relative_testfile = '../../bin/smurf/makemap'
 testfile_to_starlink = '../../../'
 
-# Setup the default values (user could change default_starpath in the
-# file if wanted?)
-default_starpath = None
 starpath = None
 env = None
 
+
+# Find STARLINK_DIR, or warn user to check.
 if default_starpath:
     starpath = default_starpath
     logger.info('Using default Starlink path {}'.format(starpath))
@@ -442,11 +481,11 @@ else:
         else:
             logger.warning('Could not find Starlink: please run change_starpath("/path/to/star")')
 
-# ADAM dir used will be a termporary file in the current directory,
+# ADAM_USER: set this to temporary directory in the current directory,
 # that should be automatically deleted when python closes.
 adamdir = os.path.relpath(tempfile.mkdtemp(prefix='tmpADAM', dir=os.getcwd()))
 atexit.register(shutil.rmtree, adamdir)
 
-# Actually setup starlink environment
+# If we found a starpath, set it up
 if starpath:
     env = setup_starlink_environ(starpath,  adamdir)

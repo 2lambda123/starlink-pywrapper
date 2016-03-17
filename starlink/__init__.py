@@ -73,6 +73,5 @@ from . import convert
 from . import figaro
 from . import surf
 
-from star import change_starpath
 
 __version__ = 0.1
