@@ -1,5 +1,4 @@
-# Copyright (C) 2013-2014 Science and Technology Facilities Council.
-# Copyright (C) 2015-2016 East Asian Observatory
+# Copyright (C) 2016 East Asian Observatory
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,19 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Convenience utilities when using Starlink in python.
 
-
-
-
-
+"""
 
 import logging
 
 from astropy.io import fits
 from starlink import ndfpack
-
-
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
