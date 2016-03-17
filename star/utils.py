@@ -326,7 +326,7 @@ def starcomm(command, commandname, *args, **kwargs):
 
             # Call the process: note errors are written to stdout rather
         # than stderr, so we have to redirect that as well.
-        proc = subprocess.Popen([command]+arg, env=env, shell=False,
+        proc = subprocess.Popen([command] + arg, env=env, shell=False,
                                 stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         status = proc.returncode
@@ -440,7 +440,7 @@ else:
             logger.info('Using Starlink at {}.'.format(starpath))
 
         else:
-            logger.warning('Could not find Starlink: please run set_starpath("/path/to/star")')
+            logger.warning('Could not find Starlink: please run change_starpath("/path/to/star")')
 
 # ADAM dir used will be a termporary file in the current directory,
 # that should be automatically deleted when python closes.
