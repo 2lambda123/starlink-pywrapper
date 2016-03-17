@@ -313,7 +313,7 @@ def starcomm(command, commandname, *args, **kwargs):
         command (str): path of command to run, e.g. '$SMURFDIR/makecube'
         commandname (str): name of command (used for getting output values)
 
-    Keyword arguments;
+    Keyword arguments:
         returnStdOut (bool): return the commands std out as string
 
     Other arguments and keyword arguments are evaluated by the command
@@ -323,10 +323,9 @@ def starcomm(command, commandname, *args, **kwargs):
 
     Returns:
        namedtuple: all the input and output params for this command.
-       stdout: the stdout as a string
-          (only returned if the keyword returnStdOut is True)
+       stdout: the stdout as a string (only returned if returnStdOut=True)
 
-    Usage:
+    Example:
         res = starcomm('$KAPPA_DIR/stats', 'stats', ndf='myndf.sdf')
 
     Notes:
