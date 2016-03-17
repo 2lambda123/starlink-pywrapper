@@ -1,0 +1,12 @@
+To build the documentation, please use the sphinx command:
+
+$ cd doc
+$ sphinx-apidoc -e -M -o .  ../starlink
+
+to generate the files, and the do:
+
+$ make html
+
+To build the documents.
+
+
