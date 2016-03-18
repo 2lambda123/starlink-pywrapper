@@ -46,9 +46,9 @@ These modules use the standard python logging module. To see the normal
 stdout of a starlink command, you will need to set the logging module
 to DEBUG, i.e.:
 
->>>import logging
->>>logger = logging.getLogger()
->>>logger.setLevel(logging.DEBUG)
+>>> import logging
+>>> logger = logging.getLogger()
+>>> logger.setLevel(logging.DEBUG)
 
 
 By default, this package will run commands from a STARLINK_DIR defined
@@ -57,10 +57,12 @@ not set, it will attempt to see if the module is installed inside a
 Starlink installation and use that.
 
 To see which Starlink is currently being used examine the variable:
+
 >>> wrapper.starpath
 
 or if you are using a module you can do:
->>> print(kappa.wrapper.starpath
+
+>>> print(kappa.wrapper.starpath)
 
 To change the Starlink path, or set it up if none is automatically
 found, use the method :meth:`starlink.change_starpath`, as e.g.:
