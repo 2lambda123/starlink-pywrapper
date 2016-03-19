@@ -60,7 +60,7 @@ def _get_python_type(startype):
         return startype
 
 
-# Get information from help system (gets a one line prompt string,
+# Get information from an IFL file. (gets a one line prompt string,
 # which is handy for short help).
 def _ifl_parser(ifllines, parameter_info, comname=''):
 
@@ -143,7 +143,7 @@ def get_module_info(hlp, iflpath):
 
     hlp is the result of readlines() on a module.hlp file.
 
-    iflpath is the location in which comand.ifl files can be found.
+    iflpath is the location in which command.ifl files can be found.
 
     Returns a dictionary with commandnames as keys, and a dictionary
     of parinfo tuples (keyed by parameter name).
