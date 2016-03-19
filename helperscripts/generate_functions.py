@@ -209,13 +209,16 @@ def get_module_info(hlp, iflpath):
 
     return moduledict
 
-def formatkeyword(vals, style='numpy'):
+def formatkeyword(vals, style='numpy', default=True):
 
     """
     format keyword for numpy docstring.
 
     vals should be a parinfo object
     style should be 'numpy' or 'google'
+
+    if default is False, then default
+    values won't be included.
 
     Returns a list of strings.
     """
@@ -241,7 +244,7 @@ def formatkeyword(vals, style='numpy'):
     promptstring = ''
     if vals.prompt:
         promptstring = vals.prompt
-    if vals.default:
+    if vals.default and default:
         promptstring = '{} [{}]'.format(promptstring, vals.default)
 
     if promptstring:
@@ -381,7 +384,7 @@ def make_docstrings(moduledict, sunname=None):
             outputpar = sorted(outputpar, key=lambda x: x.name)
 
             for val in outputpar:
-                valdoc = formatkeyword(val)
+                valdoc = formatkeyword(val, default=False)
                 doc += valdoc
             doc += ['']
 
