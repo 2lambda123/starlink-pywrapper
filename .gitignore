@@ -1,2 +1,14 @@
 *.pyc
 *~
+kappa.py
+smurf.py
+figaro.py
+ccdpack.py
+convert.py
+cupid.py
+surf.py
+doc/starlink.*.rst
+doc/modules.rst
+doc/starlink.rst
+doc/_autosummary
+doc/_build
