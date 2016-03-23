@@ -15,6 +15,29 @@
 # Author: SF Graves
 
 
+
+"""Generate Starlink module functions.
+
+This script generates python modules to call all the commands in a
+Starlink package, given a Starlink build tree.
+
+Usage: generate_functions.py [-q | -v] <buildtree> [<package>...]
+       generate_functions.py --help
+
+Options:
+       -h, --help     show help
+       -v, --verbose  show more output info
+       -q, --quiet    show less output info
+
+If no packages are specified, it will generate python modules for:
+KAPPA, cupid, convert, smurf, figaro, surf, and ccdpack.
+
+Any number of modules can be specified.
+
+It will look under <buildtree>/applications/modulename.lower() for:
+<modulename>.hlp and <commandname>.ifl files.
+"""
+
 import logging
 import os
 import re
@@ -22,10 +45,12 @@ import re
 from collections import namedtuple
 from keyword import iskeyword
 
+from docopt import docopt
 
 # Set up normal logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # Namedtuples to hold parameter and command information.
 parinfo = namedtuple('parinfo',
@@ -156,9 +181,18 @@ def get_module_info(hlp, iflpath):
         comname = comnames[i].split()[1].strip().lower()
         comindex = hlp.index(comnames[i])
         if i < (len(comnames) - 1):
-            nextcomindex = hlp.index(comnames[i+1])
+            # Deal with repeated command names.
+            repeats = comnames.count(comnames[i])
+            if repeats != 1:
+                logger.warning('Command %s appears %i times in the .hlp file' %(comname, repeats))
+
+                # Find real end of command.
+                nextcomindex = comindex + hlp[comindex+1:].index(comnames[i+1])
+            else:
+                nextcomindex = hlp.index(comnames[i+1])
         else:
             nextcomindex = -1
+
         commanddoc = hlp[comindex:nextcomindex]
         comdescrip = commanddoc[1].strip()
 
@@ -194,17 +228,14 @@ def get_module_info(hlp, iflpath):
             parameter_info = None
 
         moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
-        #moduledict[comname] = commandinfo(comname, comdescrip, None)
 
-        if os.path.isfile(os.path.join(iflpath, comname + '.ifl')):
-            g = open(os.path.join(iflpath, comname + '.ifl'))
-            ifl = g.readlines()
-            g.close()
-
+        # find ifl file
+        try:
+            ifl = find_starlink_file(iflpath, comname + '.ifl')
             parameter_info = _ifl_parser(ifl, parameter_info, comname=comname)
 
             moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
-        else:
+        except Exception:
             logger.warning('no ifl file found for %s' % comname)
 
     return moduledict
@@ -332,9 +363,9 @@ def make_docstrings(moduledict, sunname=None):
             positions = [int(i.position) for i in positional]
             positions.sort()
             if max(positions) != len(positions):
-                logger.warning('PROBLEM: command {} has improbably positional arguments'.format(name))
-                logger.warning([(i.name, i.position) for i in positional])
-
+                logger.debug('command {} has improbably positional arguments'.format(name))
+                logger.debug([(i.name, i.position) for i in positional])
+                logger.debug('Moving impossible positional arguments to keyword args.'.format(name))
                 # find positional parameters that need to be moved:
                 missing_index = min([i for i in range(1,len(positions)+1) if i not in positions])
                 parameters_to_move = [i for i in positional if int(i.position) >= missing_index]
@@ -396,7 +427,7 @@ def make_docstrings(moduledict, sunname=None):
             doc += heading
             sunurl = 'http://www.starlink.ac.uk/cgi-bin/htxserver/{}.htx/{}.html?xref_{}'.format(
                 sunname, sunname, name.upper())
-            doc += ['See {} for full documentation of this command in the latest Starlink release'.format(
+            doc += ['See:\n  {}\n  for full documentation of this command in the latest Starlink release'.format(
                 sunurl)]
             doc += ['']
 
@@ -413,7 +444,7 @@ moduleline = "Runs commands from the Starlink {} package.\n\n"\
 
 docrunline = 'Runs the command: {} .'
 
-def create_module(module, names, docstrings, commanddict, sunname):
+def create_module(module, names, docstrings, commanddict):
 
     modulecode = []
     moduleheader = '\n'.join(['"""', moduleline.format(module), '"""', '',
@@ -436,7 +467,7 @@ def create_module(module, names, docstrings, commanddict, sunname):
              ' '*0 + 'def {}({}):'.format(name, callsignature),
              ' '*4 + '"""',
              '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
-             '        """',
+             ' '*4 + '"""',
              ' '*4 + 'return wrapper.starcomm("{}", "{}", {})'.format(commandline,
                                                               name,
                                                                     callsignature),
@@ -446,16 +477,16 @@ def create_module(module, names, docstrings, commanddict, sunname):
         methodcode = ['\n' if i.isspace() else i for i in methodcode]
         modulecode += methodcode
 
-    f = open(module + '.py', 'w')
+    f = open(module.lower() + '.py', 'w')
     f.writelines('\n'.join([moduleheader] + modulecode))
     f.close()
 
 
-def get_command_paths(shfile, comnames, modulename, shortname):
+def get_command_paths(shfile, comnames, modulename):
     commanddict = {}
     for c in comnames:
         # find the line in the shfile
-        lines = [i for i in shfile if (c in i and shortname+'_'+c not in i)]
+        lines = [i for i in shfile if i.startswith(c)]
         lines = [i for i in lines if i.split('()')[0].strip() == c]
         if lines:
             if len(lines) > 1:
@@ -473,62 +504,120 @@ def get_command_paths(shfile, comnames, modulename, shortname):
                 command = command.lstrip('python ')
 
             # if command starts with 'starperl ', replace with $STARLINK_DIR/bin/starperl
-            if command.startswith('starperl '):
+            elif command.startswith('starperl '):
                 command = command.replace('starperl ', '${STARLINK_DIR}/bin/starperl ')
-            if not command.startswith('$'):
-                print(c, command)
+            elif not command.startswith('$'):
+                logger.warning("Com %s has an unknown command path %s" %(c, command))
             commanddict[c] = command
     return commanddict
 
 
+
+def find_starlink_file(rootpath, filename):
+    walk = os.walk(rootpath)
+    files = [os.path.join(root, filename) for root, dirs, files in walk if filename in files]
+
+    # Just take the first one if there are multiples.
+    if len(files) > 1:
+        logger.warning('Found multiple {} files under directory {}'.format(
+                filename, rootpath))
+    elif not files:
+        raise Exception('Could not find {} file under directory {}'.format(
+            filename, rootpath))
+
+    path = files[0]
+    logger.debug('Using {} file.'.format(path))
+    f = open(path, 'r')
+    filecontents = f.readlines()
+    f.close()
+    return filecontents
+
+# Information for module.
 sunnames = {
     'kappa': 'sun95',
     'cupid': 'sun255',
     'convert': 'sun55',
     'smurf': 'sun258',
-    'smurf': 'sun86',
+    'figaro': 'sun86',
     'surf': 'sun216',
     'ccdpack': 'sun139',
 }
 
 
+
+DEFAULTPACKAGES = [
+    'KAPPA',
+    'CUPID',
+    'Figaro',
+    'CONVERT',
+    'SMURF',
+    'SURF',
+    'CCDPACK',
+]
 if __name__ == '__main__':
-    # Get info from .hlp files: best way to find out if parameter is read or write.
-    starbuildpath='/export/data/sgraves/StarSoft/starlink'
-    for modulename in ['kappa', 'cupid', 'convert', 'smurf','figaro', 'surf','ccdpack']:
+
+    # Parse command line options and set defaults.
+    args = docopt(__doc__)
+
+    buildpath = args['<buildtree>']
+    packages = args['<package>']
+
+    if not packages:
+        packages = DEFAULTPACKAGES
+
+    if args['--quiet']:
+        logger.setLevel(logging.WARNING)
+    elif args['--verbose']:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    logger.info('Using Starlink build from {}.'.format(buildpath))
+    logger.info('Building python modules {}.'.format(', '.join(packages)))
+
+
+    # Create a function for each package
+    for modulename in packages:
 
         logger.info('Creating {} module '.format(modulename))
 
-        hlppath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.hlp')
-        if modulename == 'surf':
-            hlppath = os.path.join(starbuildpath, 'applications', modulename, 'docs', 'hlp', 'surf.hlp')
+        # Get the name of the SUN:
+        sunname = sunnames.get(modulename.lower(), None)
+        if not sunname:
+            logger.warning('No SUN found for {}.'.format(modulename))
 
-        if not os.path.isfile(hlppath):
-            raise Exception('Could not find hlp file at %s' % hlppath)
+        # Find the <package>.hlp, <package>.sh and path for ifl files:
+        rootpath = os.path.join(buildpath, 'applications', modulename.lower())
 
-        f = open(hlppath, 'r')
-        helpfile = f.readlines()
-        f.close()
-        shpath = os.path.join(starbuildpath, 'applications', modulename, modulename + '.sh')
-        f = open(shpath, 'r')
-        shfile = f.readlines()
-        f.close()
-        iflpath = os.path.join(starbuildpath, 'applications', modulename)
-        if modulename == 'figaro':
-            iflpath = os.path.join(starbuildpath, 'applications', 'figaro', 'figaroiflfiles')
-        moduledict = get_module_info(helpfile, iflpath)
+        helpfile = find_starlink_file(rootpath, modulename.lower() + '.hlp')
+        shfile = find_starlink_file(rootpath, modulename.lower() + '.sh')
 
-        shortname = modulename
-        if modulename == 'convert':
-            shortname = 'con'
-        if modulename in  moduledict:
-            moduledict.pop(modulename)
-        if shortname + '_help' in  moduledict:
-            moduledict.pop(shortname + '_help')
-        commanddict = get_command_paths(shfile, moduledict.keys(), modulename, shortname)
-        docstrings = make_docstrings(moduledict, sunnames.get(modulename, None))
+        # Parse the .hlp and .ifl files to get a dictionary of commands
+        # and parameters (with parinfo namedtuples to describe parameter).
+        moduledict = get_module_info(helpfile, rootpath)
+
+
+        # Clean up a few commands we don't want.  Specifically the
+        # modulename itself, and any interactive _help.
+        if modulename.lower() in  moduledict:
+            moduledict.pop(modulename.lower())
+        helpname = modulename.lower() + 'help'
+        if helpname in moduledict:
+            moduledict.pop(helpname)
+        if len(modulename) > 3:
+            helpname = modulename[0:3].lower() + 'help'
+            if helpname in moduledict:
+                moduledict.pop(helpname)
+
+        # Parse the shfile to get the actual commands that are being run.
+        commanddict = get_command_paths(shfile, moduledict.keys(), modulename)
+
+        # Create the docstrings for every command.
+        docstrings = make_docstrings(moduledict, sunnames.get(modulename.lower(), None))
 
         commandnames = list(commanddict.keys())
         commandnames.sort()
-        create_module(modulename, commandnames, docstrings, commanddict, sunnames.get(modulename, None))
+
+        # Create the <modulename>.py file.
+        create_module(modulename, commandnames, docstrings, commanddict)
 
