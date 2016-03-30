@@ -204,6 +204,7 @@ def get_module_info(hlp, iflpath):
             except IndexError:
                 nextindex = -1
             parameter_introlines = [i for i in commanddoc[parindex+1:nextindex] if i[0] == '3']
+
             parameters = [commanddoc[commanddoc.index(i)+1] for i in parameter_introlines]
 
             # Get lowercase parameter names without array stuff (e.g. 'lbnd'
@@ -218,11 +219,19 @@ def get_module_info(hlp, iflpath):
             # Get types (e.g. is it write or read variable)
             par_type = [i.split('(')[-1].strip(')\n').lower() if '(' in i else None for i in parameters ]
 
+            # Get descriptions of variables from hlp file
+            hlpparams = parse_help_file( commanddoc, comname)
+
             # Create output variables.
             parameter_info = dict()
             for pname, ptype, plist in zip(parnames, par_type, parlist):
-                # So far we only have the readwrite information.
-                parameter_info[pname] = parinfo(pname, *([None]*10 + [plist] + [ptype]))
+                # So far we only have the readwrite, list_ information, and possibily the prompt
+                if pname in hlpparams:
+                    prompt = hlpparams[pname]
+                else:
+                    prompt = None
+                    logger.warning('{}: parameter "{}" not found in hlpfile'.format(comname, pname))
+                parameter_info[pname] = parinfo(pname, None, prompt, *([None]*8 + [plist] + [ptype]))
 
         except ValueError:
             parameter_info = None
@@ -238,7 +247,49 @@ def get_module_info(hlp, iflpath):
         except Exception:
             logger.warning('no ifl file found for %s' % comname)
 
+
+
     return moduledict
+
+
+def parse_help_file(helpsection, comname):
+    """
+    Parse lines coming from a Starlink help file.
+
+    Return a description and the info for each parameter.
+    """
+    # Extract out the section detailing the Parameters
+    sectionline = [i for i in helpsection if i.startswith('2 Parameters')]
+    if len(sectionline) > 1:
+        logger.warning('Multiple parameter sections found for {}.'.format(comname))
+    sectionline = sectionline[0]
+
+    parameterindex = helpsection.index(sectionline)
+
+    # Start of next section.
+    nextsection = [i for i in helpsection[parameterindex+1:] if i.startswith('2 ')]
+    if len(nextsection) <1:
+        nextsection = -1
+    else:
+        nextsection = nextsection[0]
+
+    nextsectionindex = helpsection.index(nextsection)
+    parsection = helpsection[parameterindex:nextsectionindex]
+
+
+    parnames = [i for i in parsection if i.startswith('3 ')]
+
+    resultsdict = {}
+    for i in range(len(parnames)):
+        descripstart = parsection.index(parnames[i]) + 1
+
+        if i < len(parnames) -1 :
+            descripend = parsection.index(parnames[i + 1])
+        else:
+            descripend = -1
+        resultsdict[parnames[i].lstrip('3 ').strip().lower()] = ''.join(parsection[descripstart+1:descripend])
+    return resultsdict
+
 
 def formatkeyword(vals, style='numpy', default=True):
 
@@ -427,7 +478,7 @@ def make_docstrings(moduledict, sunname=None):
             doc += heading
             sunurl = 'http://www.starlink.ac.uk/cgi-bin/htxserver/{}.htx/{}.html?xref_{}'.format(
                 sunname, sunname, name.upper())
-            doc += ['See:\n  {}\n  for full documentation of this command in the latest Starlink release'.format(
+            doc += ['See {}\n  for full documentation of this command in the latest Starlink release'.format(
                 sunurl)]
             doc += ['']
 
