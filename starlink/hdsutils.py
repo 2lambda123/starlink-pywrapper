@@ -88,24 +88,27 @@ def _hds_iterate_components(hdscomp):
     return results_dict
 
 
-def _hdstrace_print(self):
+def _hdstrace_print(results):
 
     """
     Print the results of get_hds_values prettily.
     """
     output = []
-    maxlength = len(max(self._fields, key=len))
-    space = 4
+    if results:
+        maxlength = len(max(results._fields, key=len))
+        space = 4
 
-    for i in self._asdict().items():
+        for i in results._asdict().items():
 
-        if isinstance(i[1], list) and len(str(i[1])) > 79 - maxlength - space:
-            j = ['['+' ' + str(i[1][0])] +  \
-                [' '*(maxlength+space+2) + str(n) for n in i[1][1:]] + \
-                [' '*(maxlength+space) + ']']
-            value = '\n'.join(j)
-        else:
-            value = i[1]
-        output.append('{:>{width}}'.format(str(i[0]), width=maxlength) + ' '*space + str(value))
-    return '\n'.join(output)
+            if isinstance(i[1], list) and len(str(i[1])) > 79 - maxlength - space:
+                j = ['['+' ' + str(i[1][0])] +  \
+                    [' '*(maxlength+space+2) + str(n) for n in i[1][1:]] + \
+                    [' '*(maxlength+space) + ']']
+                value = '\n'.join(j)
+            else:
+                value = i[1]
+            output.append('{:>{width}}'.format(str(i[0]), width=maxlength) + ' '*space + str(value))
+        return '\n'.join(output)
+    else:
+        return ''
 
