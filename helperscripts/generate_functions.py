@@ -102,11 +102,13 @@ def _ifl_parser(ifllines, parameter_info, comname='', prefer_hlp_prompt=False):
 
     """
 
+    if not parameter_info:
+        return {}
     ifl=''.join(ifllines)
 
     # Parse IFL file to find start and end of each parameter.
-    parindices = [m.start() for m in re.finditer('\n[\s]*parameter', ifl)]
-    endindices = [m.start() for m in re.finditer('\n[\s]*endparameter', ifl)]
+    parindices = [m.start() for m in re.finditer('\n[\s]*parameter', ifl.lower())]
+    endindices = [m.start() for m in re.finditer('\n[\s]*endparameter', ifl.lower())]
     pardict={}
 
     # Go through each parameter
@@ -164,9 +166,10 @@ def _ifl_get_parameter_value(paramlist, value):
     """
     Get the value of a parameter (as a string).
     """
-    findvalues = [s for s in paramlist if s.strip().startswith(value)]
+    findvalues = [s for s in paramlist if s.strip().lower().startswith(value)]
+    regex = re.compile(r"\s*" + value+ "\s*", flags=re.I)
     if findvalues:
-        result = findvalues[0].split(value)[1].strip()
+        result = regex.split(findvalues[0])[1].strip()
     else:
         result = None
 
@@ -217,7 +220,17 @@ def get_module_info(hlp, iflpath):
                 nextindex = -1
             parameter_introlines = [i for i in commanddoc[parindex+1:nextindex] if i[0] == '3']
 
-            parameters = [commanddoc[commanddoc.index(i)+1] for i in parameter_introlines]
+            # Deal with the fact htat sometimes parameter info has a
+            # second line like 'IN1 = NDF (Read)', and if so we want
+            # to get it. Otherwise just use the first line with '3 '
+            # stripped of.
+            parameters = []
+            for i in parameter_introlines:
+                secondline = commanddoc[commanddoc.index(i)+1]
+                if '=' in secondline:
+                    parameters.append(secondline)
+                else:
+                    parameters.append(i.lstrip('3 '))
 
             # Get lowercase parameter names without array stuff (e.g. 'lbnd'
             # instead of 'LBND( 2 )' )
@@ -232,7 +245,7 @@ def get_module_info(hlp, iflpath):
             par_type = [i.split('(')[-1].strip(')\n').lower() if '(' in i else None for i in parameters ]
 
             # Get descriptions of variables from hlp file
-            hlpparams = parse_help_file( commanddoc, comname)
+            hlpparams, defaultparams = parse_help_file( commanddoc, comname)
 
             # Create output variables.
             parameter_info = dict()
@@ -243,7 +256,11 @@ def get_module_info(hlp, iflpath):
                 else:
                     prompt = None
                     logger.warning('{}: parameter "{}" not found in hlpfile'.format(comname, pname))
-                parameter_info[pname] = parinfo(pname, None, prompt, *([None]*8 + [plist] + [ptype]))
+                if pname in defaultparams:
+                    default = defaultparams[pname]
+                else:
+                    default = None
+                parameter_info[pname] = parinfo(pname, None, prompt, default, *([None]*7 + [plist] + [ptype]))
 
         except ValueError:
             parameter_info = None
@@ -293,16 +310,38 @@ def parse_help_file(helpsection, comname):
 
     parnames = [i for i in parsection if i.startswith('3 ')]
 
-    resultsdict = {}
+    promptdict = {}
+    defaultdict = {}
     for i in range(len(parnames)):
         descripstart = parsection.index(parnames[i]) + 1
 
         if i < len(parnames) -1 :
             descripend = parsection.index(parnames[i + 1])
         else:
-            descripend = -1
-        resultsdict[parnames[i].lstrip('3 ').strip().lower()] = ''.join(parsection[descripstart+1:descripend])
-    return resultsdict
+            descripend = None
+        # Check if hlp file as second line of parameters like 'IN1 = NDF (Read)' (Kappa etc,), or not.
+        if '=' in parsection[descripstart]:
+            promptstring = ''.join(parsection[descripstart+1:descripend])
+        else:
+            promptstring = ''.join(parsection[descripstart:descripend])
+
+        # Remove trailing [] default value?
+        if promptstring and  promptstring.strip()[-1] == ']' and '[' in promptstring:
+            t= promptstring.split('[')
+            promptstring = '['.join(t[0:-1])
+            default = t[-1]
+            default = default.rsplit(']')[0]
+        else:
+            default = None
+
+        # Fix up formatting of lists
+        promptstring = indent_lists(promptstring)
+
+        # Create results dictionary.
+        pname = parnames[i].lstrip('3 ').strip().lower()
+        promptdict[pname] = promptstring
+        defaultdict[pname] = default
+    return promptdict, defaultdict
 
 
 def formatkeyword(vals, style='numpy', default=True):
@@ -339,7 +378,7 @@ def formatkeyword(vals, style='numpy', default=True):
     # Format the prompt (if it exists)
     promptstring = ''
     if vals.prompt:
-        promptstring = vals.prompt
+        promptstring = vals.prompt.rstrip()
     if vals.default and default:
         promptstring = '{} [{}]'.format(promptstring, vals.default)
 
@@ -347,10 +386,10 @@ def formatkeyword(vals, style='numpy', default=True):
         if style=='numpy':
             doc += [' '*4  + promptstring]
         elif style=='google':
-            doc[0] += ': {}'.format(promptstring)
+            doc[0] += ':\n{}'.format(promptstring)
     return doc
 
-def make_docstrings(moduledict, sunname=None):
+def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
 
     """
     Create the docstrings for a command.
@@ -448,8 +487,9 @@ def make_docstrings(moduledict, sunname=None):
             positional = sorted(positional, key=lambda x: x.position)
             names = [i.name + '_' if iskeyword(i.name) else i.name for i in positional]
             for val in positional:
-                valdoc = formatkeyword(val)
+                valdoc = formatkeyword(val, style=kstyle)
                 doc += valdoc
+                doc += ['']
             doc +=['']
 
             callsignature = ', '.join(names) + ', **kwargs'
@@ -467,8 +507,9 @@ def make_docstrings(moduledict, sunname=None):
             doc += heading
 
             for val in inputpar:
-                valdoc = formatkeyword(val)
+                valdoc = formatkeyword(val, style=kstyle)
                 doc += valdoc
+                doc += ['']
             doc += ['']
 
 
@@ -480,8 +521,9 @@ def make_docstrings(moduledict, sunname=None):
             outputpar = sorted(outputpar, key=lambda x: x.name)
 
             for val in outputpar:
-                valdoc = formatkeyword(val, default=False)
+                valdoc = formatkeyword(val, default=False, style=kstyle)
                 doc += valdoc
+                doc += ['']
             doc += ['']
 
 
@@ -492,7 +534,7 @@ def make_docstrings(moduledict, sunname=None):
             doc += heading
             sunurl = 'http://www.starlink.ac.uk/cgi-bin/htxserver/{}.htx/{}.html?xref_{}'.format(
                 sunname, sunname, name.upper())
-            doc += ['See {}\n  for full documentation of this command in the latest Starlink release'.format(
+            doc += ['See {}\nfor full documentation of this command in the latest Starlink release'.format(
                 sunurl)]
             doc += ['']
 
@@ -500,6 +542,35 @@ def make_docstrings(moduledict, sunname=None):
         # and the call signature.
         docstringdict[name] = ('\n'.join(doc), callsignature)
     return docstringdict
+
+
+def indent_lists(text):
+    """
+    Indent lines following ones where first non-white space character
+    is '-', and previous line is blank and following line is blank.
+    """
+    text = text.split('\n')
+    matchbullet = re.compile('^[\s]*-[\s]*')
+    matchblank = re.compile('^[\s]*$')
+    inbullet = False
+
+    # Go through each line
+    for i in range(len(text)):
+        line = text[i]
+        if i > 0:
+            prevline = text[i-1]
+        else:
+            prevline = ''
+
+        # Find if line starts with white space then '-'2
+        if matchbullet.findall(line) and matchblank.findall(prevline):
+            inbullet = matchbullet.findall(line)[0]
+        elif matchblank.findall(line):
+            inbullet=False
+        elif inbullet:
+            space = ' ' * len(inbullet)
+            text[i] = space + line.lstrip()
+    return '\n'.join(text)
 
 
 
@@ -584,10 +655,10 @@ def find_starlink_file(rootpath, filename):
 
     # Just take the first one if there are multiples.
     if len(files) > 1:
-        logger.warning('Found multiple {} files under directory {}'.format(
-                filename, rootpath))
+        logger.warning('Found multiple {} files under directory {}: using {}'.format(
+                filename, rootpath, files[0]))
     elif not files:
-        raise Exception('Could not find {} file under directory {}'.format(
+        raise IOError('Could not find {} file under directory {}'.format(
             filename, rootpath))
 
     path = files[0]
@@ -678,7 +749,7 @@ if __name__ == '__main__':
         commanddict = get_command_paths(shfile, moduledict.keys(), modulename)
 
         # Create the docstrings for every command.
-        docstrings = make_docstrings(moduledict, sunnames.get(modulename.lower(), None))
+        docstrings = make_docstrings(moduledict, sunnames.get(modulename.lower(), None), kstyle='numpy')
 
         commandnames = list(commanddict.keys())
         commandnames.sort()
