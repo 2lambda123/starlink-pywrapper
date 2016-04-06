@@ -314,7 +314,7 @@ def starcomm(command, commandname, *args, **kwargs):
         commandname (str): name of command (used for getting output values)
 
     Keyword arguments:
-        returnStdOut (bool): return the commands std out as string
+        returnstdout (bool): return the commands std out as string
 
     Other arguments and keyword arguments are evaluated by the command
     being called. Please see the Starlink documentation for the command.
@@ -344,7 +344,10 @@ def starcomm(command, commandname, *args, **kwargs):
     #if not 'quiet' in kwargs and com not in {'jsasplit.py', 'picard_start.sh'}:
     #    kwargs['quiet'] = QUIET
 
-    returnStdOut = kwargs.get('returnStdOut', False)
+    if 'returnstdout' in kwargs:
+        returnStdOut = kwargs.pop('returnstdout')
+    else:
+        returnStdOut = False
 
     # Turn args and kwargs into a single list appropriate for sending to
     # subprocess.Popen.
