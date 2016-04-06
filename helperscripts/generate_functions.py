@@ -87,7 +87,7 @@ def _get_python_type(startype):
 
 # Get information from an IFL file. (gets a one line prompt string,
 # which is handy for short help).
-def _ifl_parser(ifllines, parameter_info, comname=''):
+def _ifl_parser(ifllines, parameter_info, comname='', prefer_hlp_prompt=False):
 
     """Get parameter info from an ifl file for a command.
 
@@ -131,6 +131,18 @@ def _ifl_parser(ifllines, parameter_info, comname=''):
             elif isinstance(val, str):
                 val = val.replace("'",'').replace('"','')
             values.append(val)
+
+        # If using hlp file prompts in preference to ifl prompts,
+        # update the vals.
+        if prefer_hlp_prompt:
+            if parname in parameter_info:
+                prompt = parameter_info[parname].prompt
+                if prompt:
+                    values[1] = prompt
+        if parname in parameter_info:
+            default = parameter_info[parname].default
+            if default:
+                values[2] = default
 
         # Assign output values from input information
         if parameter_info and parname in parameter_info:
@@ -241,10 +253,12 @@ def get_module_info(hlp, iflpath):
         # find ifl file
         try:
             ifl = find_starlink_file(iflpath, comname + '.ifl')
-            parameter_info = _ifl_parser(ifl, parameter_info, comname=comname)
-
+            logger.debug('Parsing ifl file')
+            parameter_info = _ifl_parser(ifl, parameter_info, comname=comname, prefer_hlp_prompt=True)
+            logger.debug('Creating command info')
             moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
-        except Exception:
+
+        except IOError:
             logger.warning('no ifl file found for %s' % comname)
 
 
