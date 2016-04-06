@@ -51,9 +51,7 @@ from collections import namedtuple
 
 from . import hdsutils
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 
 # Default starpath to use (if installing outside of Starlink, you may
