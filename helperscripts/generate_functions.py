@@ -67,19 +67,19 @@ def _get_python_type(startype):
     # remove quotes
     if startype:
         startype = startype.replace('"','').replace("'",'')
-
-    if startype == '_LOGICAL':
-        return 'bool'
-    elif startype == '_INTEGER' or startype == '_integer':
-        return 'int'
-    elif startype == '_REAL' or startype == '_DOUBLE':
-        return 'float'
-    elif startype == 'NDF' or startype == 'FILENAME':
-        return 'str,filename'
-    elif startype == '_CHAR' or startype == 'LITERAL':
-        return 'str'
-    elif not startype:
+    else:
         return ''
+
+    if startype.upper() == '_LOGICAL':
+        return 'bool'
+    elif startype.upper() == '_INTEGER' or startype.upper() == '_integer':
+        return 'int'
+    elif startype.upper() == '_REAL' or startype.upper() == '_DOUBLE':
+        return 'float'
+    elif startype.upper() == 'NDF' or startype.upper() == 'FILENAME':
+        return 'str,filename'
+    elif startype.upper() == '_CHAR' or startype.upper() == 'LITERAL':
+        return 'str'
     else:
         logger.warning('Unknown startype (%s)' % (startype))
         return startype
@@ -390,11 +390,11 @@ def make_docstrings(moduledict, sunname=None):
                 elif (readwrite == 'read' or
                       readwrite == 'given' or
                       readwrite == 'update' or
-                      (readwrite == 'write' and i.type_ is not None and 'NDF' in i.type_) or
-                      (readwrite == 'write' and i.type_ is not None and 'FILENAME' in i.type_) or
-                      (readwrite == 'write' and i.type_ is not None and 'LITERAL' in i.type_ and
+                      (readwrite == 'write' and i.type_ is not None and 'ndf' in i.type_.lower()) or
+                      (readwrite == 'write' and i.type_ is not None and 'filename' in i.type_.lower()) or
+                      (readwrite == 'write' and i.type_ is not None and 'literal' in i.type_.lower() and
                        i.association is not None and 'CATAL' in i.association) or
-                      (readwrite == 'write' and i.type_ is not None and 'LITERAL' in i.type_ and
+                      (readwrite == 'write' and i.type_ is not None and 'literal' in i.type_.lower() and
                        (i.vpath is not None and 'CURRENT' in i.vpath) or
                        (i.ppath is not None and 'CURRENT' in i.ppath))):
                     inputpar.append(i)
