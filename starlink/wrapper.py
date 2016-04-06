@@ -356,16 +356,15 @@ def starcomm(command, commandname, *args, **kwargs):
     #arg += ['RESET']
 
     try:
-        logger.debug([command]+arg)
-
         # Replace things like ${KAPPA_DIR} and $KAPPA_DIR with the
         # KAPPA_DIR value.
         for i, j in starlink_environdict_substitute.items():
             command = command.replace('$' + i, env[i])
             command = command.replace('${' + i + '}', env[i])
 
-            # Call the process: note errors are written to stdout rather
+        # Call the process: note errors are written to stdout rather
         # than stderr, so we have to redirect that as well.
+        logger.debug([command] + arg)
         proc = subprocess.Popen([command] + arg, env=env, shell=False,
                                 stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout, stderr = proc.communicate()
@@ -399,9 +398,10 @@ def starcomm(command, commandname, *args, **kwargs):
     # and raise a useful error message.
     except OSError as err:
         if err.errno == 2:
-            raise OSError('command %s does not exist; '
+            logger.error('command %s does not exist; '
                           'perhaps you have mistyped it?'
                           % command)
+            raise err
         else:
             raise err
 
