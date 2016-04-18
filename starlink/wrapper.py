@@ -36,6 +36,7 @@ python to run this software.
 """
 
 import atexit
+import glob
 import logging
 import os
 import re
@@ -43,6 +44,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 import tempfile
 
 
@@ -216,6 +218,9 @@ starlink_other_variables = {
     "SYS_SPECX": "share/specx",
     }
 
+
+# Return type for PICARD and ORAC-DR
+oracoutput = namedtuple('oracoutput', 'runlog outdir datafiles imagefiles logfiles status pid')
 
 def setup_starlink_environ(starpath, adamdir,
                            noprompt=True):
@@ -449,6 +454,470 @@ def _make_argument_list(*args, **kwargs):
     return output
 
 
+JCMTINST = ['ACSIS', 'SCUBA2_850', 'SCUBA2_450', 'SCUBA', 'JCMTDAS', ]
+UKIRTINST = ['CGS4', 'CLASSICCAM', 'GMOS', 'INGRID', 'IRCAM2', 'IRCAM', 'IRIS2', 'ISAAC', 'MICHELLE', 'NACO', 'OCGS4', 'SOFI', 'SPEX', 'START', 'UFTI', 'UFTI_OLD']
+
+ORACDR_DATA_IN_PATHS = {
+    'ACSIS': '/jcmtdata/raw/acsis/spectra',
+    'SCUBA2': '/jcmtdata/raw/scuba2/ok',
+}
+
+
+def oracdr_envsetup(instrument, utdate=None, ORAC_DIR=None,
+                    ORAC_DATA_IN=None, ORAC_DATA_OUT=None,
+                    ORAC_CAL_ROOT=None, ORAC_DATA_CAL=None,
+                    ORAC_PERL5LIB=None):
+    """
+    Setup the various ORAC-DR environmental variables.
+
+    Uses the modules 'env' variable as a starting point (via a copy).
+
+    Returns an updated environment dictionary.
+
+    """
+    oracenv = env.copy()
+    if not utdate:
+        utdate = time.strftime('%Y%M%d')
+    else:
+        utdate = str(utdate)
+
+    instrument = instrument.upper()
+    logger.debug('Setting $INSTRUMENT to {}.'.format(instrument))
+    oracenv['ORAC_INSTRUMENT'] = instrument
+
+    # Data & cal directories (see orac_calc_instrument settings?)
+    if not ORAC_DATA_IN:
+        if ('SCUBA2' in instrument) or ('SCUBA-2'  in instrument):
+            ORAC_DATA_IN = os.path.join(ORACDR_DATA_IN_PATHS['SCUBA2'], utdate)
+        elif instrument.upper() in ORACDR_DATA_IN_PATHS:
+            ORAC_DATA_IN = os.path.join(ORACDR_DATA_IN_PATHS[instrument.upper()], utdate)
+        else:
+            if instrument in jcmtinst:
+                ORAC_DATA_IN = os.path.join('/jcmtdata/raw/', instrument.lower(), utdate)
+            elif instrument in ukirtinst:
+                ORAC_DATA_IN = os.path.join('/ukirtdata/raw/', instrument.lower(), utdate)
+            else:
+                logger.warning('Setting ORAC_DATA_IN to "/"')
+                ORAC_DATA_IN = '/'
+
+    oracenv['ORAC_DATA_IN'] = ORAC_DATA_IN
+    logger.info('Setting ORAC_DATA_IN to {}'.format(ORAC_DATA_IN))
+    if not ORAC_DATA_OUT:
+        ORAC_DATA_OUT = os.getcwd()
+        logger.info('Automatically setting ORAC_DATA_OUT to {}.'.format(ORAC_DATA_OUT))
+    oracenv['ORAC_DATA_OUT'] = ORAC_DATA_OUT
+
+    if not ORAC_DIR:
+        ORAC_DIR = os.path.join(env['STARLINK_DIR'], 'bin', 'oracdr', 'src')
+    oracenv['ORAC_DIR'] = ORAC_DIR
+
+    if not ORAC_PERL5LIB:
+        ORAC_PERL5LIB = os.path.join(ORAC_DIR, 'lib', 'perl5')
+    oracenv['ORAC_PERL5LIB'] = ORAC_PERL5LIB
+
+    if not ORAC_CAL_ROOT:
+        ORAC_CAL_ROOT = os.path.join(ORAC_DIR, os.path.pardir, 'cal')
+    oracenv['ORAC_CAL_ROOT'] = ORAC_CAL_ROOT
+
+    if not ORAC_DATA_CAL:
+        if 'SCUBA2' in instrument:
+            ORAC_DATA_CAL = os.path.join(ORAC_CAL_ROOT, 'scuba2')
+        else:
+            ORAC_DATA_CAL = os.path.join(ORAC_CAL_ROOT, instrument.lower())
+    oracenv['ORAC_DATA_CAL'] = ORAC_DATA_CAL
+    oracenv['ORAC_LOOP'] = "flag -skip"
+
+
+    # Used by oracdr to see if everything is setup right:
+    oracenv['STAR_LOGIN'] = '1'
+
+    return oracenv
+
+
+
+
+
+def oracdr(instrument, loop='file', dataout=None,
+           datain=None, recipe=None, recpars=None, onegroup=False,
+           rawfiles=None, utdate=None, obslist=None,
+           headeroverride=None, calib=None,
+           verbose=False, debug=False, warn=False):
+    """Run oracdr on a batch of files.
+
+    Arguments:
+    ----------
+    instrument (str): Name of instrument
+
+    Keyword Arguments:
+    ------------------
+
+    loop (str): 'file' or 'list'. determine if input obs are specified as
+      raw file names/paths or as a list of observation numbers and a
+      utdate. ['file']
+
+    dataout (str): location of output data directory; defaults to curr dir.
+
+    datain (str): location of input data; defaults to curr dir.
+
+    recipe (str): Name of recipe to run. If None, use recipe from headers.
+
+    onegroup (Bool): Force all observations into one processing group.
+
+    rawfiles (str or list of filenames/paths) : if str, a text file
+      giving names of all input files. If list, then list of all input
+      files as python list. Files are taken relative to datain, or can
+      be given as absolute path. Only used if loop='file'
+
+    utdate (int, YYYYMMDD): utdate of input data. Only used if loop='list'
+
+    obslist List(int): list of input scan numbers. Input files will be
+      generated assuming JCMT/UKIRT data structure, similar to
+      <datain>/<utdate>/<scannumber>/rawfiles .
+
+    headeroverride (str, filename): file with optional header overrides.
+
+    calib (str): calibration overrides. Accepts comma separated key=value pairs.
+
+    verbose (bool): provide output from Starlink commands in log/stdout
+
+    debug (bool): provide debug output.
+
+    warn (bool): show Perl warning messages.
+
+    Returns:
+    --------
+
+    Return value is a named tuple with:
+
+     - runlog: name of output logfile.
+     - outputdir: path of output directory
+     - datafiles: list of output data files.
+     - imagefiles: list of output image files.
+     - logfiles: list of log.* files
+     - status: int, return code from suprocess.Popen
+     - pid (int): pid of perl parent process.
+
+
+    Notes:
+    ------
+    This will *not* raise an exception if ORAC-DR ended with an error;
+    it is up to the calling code to check the status if required.
+
+    """
+
+    instrument = instrument.upper()
+
+    # Complain and exit about various impossible options:
+    if loop not in ['file', 'list']:
+        logger.error('Unrecognised option loop={},  should be "file" or "list"'.format(loop))
+        raise Exception('Unrecognised option loop={}, should be loop="file" or loop="list"'.format(loop))
+
+    elif loop == 'list' and (not utdate or not obslist):
+        logger.error('When using loop="list" then utdate AND obslist must be given.')
+        raise Exception('When using loop="list" then utdate AND obslist must be given.')
+
+    elif loop == 'file' and not rawfiles:
+        logger.error('When using loop="file" then rawfiles must be given.')
+        raise Exception('When using loop="file" then rawfiles must be given.')
+
+
+    if dataout:
+        dataout = os.path.abspath(dataout)
+        if not os.path.isdir(dataout):
+            logger.error('Requested ORAC_DATA_OUT {} does not exist'.format(dataout))
+            raise Exception('Requested ORAC_DATA_OUT {} does not exist'.format(dataout))
+    else:
+        dataout = os.getcwd()
+
+    # Actually run in a temporary working directory in data out. Make that now.
+    outputdir = os.path.abspath(tempfile.mkdtemp(prefix='ORACworking', dir=dataout))
+    logger.debug('Working output directory for ORAC-DR is {}.'.format(outputdir))
+
+    # Set up ORAC data in.
+    if datain:
+        datain = os.path.abspath(datain)
+        if not os.path.isdir(datain):
+            logger.warning('Requested DATA_IN directory {} does not exist'.format(
+                datain))
+
+    # Set up environmental variables to run ORAC succesfully.
+    oracenv = oracdr_envsetup(instrument, utdate=utdate, ORAC_DIR=None,
+                    ORAC_DATA_IN=datain, ORAC_DATA_OUT=outputdir,
+                    ORAC_CAL_ROOT=None, ORAC_DATA_CAL=None,
+                    ORAC_PERL5LIB=None)
+
+    # If using loop=file get rawfiles into correct format.
+    if loop=="file":
+        if isinstance(rawfiles, basestring):
+            if not os.path.isfile(rawfiles):
+                logger.error('Could not find raw file list {}!'.format(rawfiles))
+            else:
+                rawobsfilename = rawfiles
+        else:
+            # Assume it is an iterable list of strings.
+            outputfiles = []
+            try:
+                for r in rawfiles:
+                    if os.path.isabs(r):
+                        if os.path.isfile(r):
+                            outputfiles.append(r)
+                        else:
+                            logger.warning('Raw absolute filepath {} could not be found on disk.'.format(r))
+                    else:
+                        odatain = oracenv['ORAC_DATA_IN']
+                        abspath = os.path.join(odatain, r)
+                        if os.path.isfile(abspath):
+                            outputfiles.append(abspath)
+                        else:
+                            logger.warning('Raw relative filepath {} could not be found in ORAC_DATA_IN {}.'.format(
+                                r, odatain))
+                if not outputfiles:
+                    logger.error('No valid input raw files were found!')
+                    raise Exception('No valid input raw files were found!')
+                else:
+                    # Write output files into a temp file.
+                    fh, rawobsfilename = tempfile.mkstemp(prefix='tmpORACInputList.lis', text=True)
+                    fh.writelines('\n'.join(outputfiles))
+                    fh.close()
+            except:
+                logger.error('Could turn provided list of raw observation files into correct format')
+                raise Exception('Could turn provided list of raw observation files into correct format')
+
+
+    # Orac dr perl command
+    starperl = os.path.join(oracenv['STARLINK_DIR'], 'Perl', 'bin', 'perl')
+    oracdr_script = os.path.join(oracenv['ORAC_DIR'], 'bin', 'oracdr')
+    # Set up commands:
+    commandlist = [starperl, oracdr_script, '-log=sf', '-nodisplay', '-batch']
+
+    commandlist += ['-loop={}'.format(loop)]
+    if loop == 'list':
+        commandlist += ['-ut={}'.format(str(utdate))]
+        if isinstance(obslist, basestring):
+            commandlist += ['-list={}'.format(obslist)]
+        else:
+            commandlist += ['-list={}'.format(','.join([str(int(i)) for i in obslist]))]
+    if loop == 'file':
+        commandlist += ['-files={}'.format(rawobsfilename)]
+
+    if recpars:
+        commandlist += ['-recpars={}'.format(recpars)]
+    if onegroup:
+        commandlist += ['-onegroup']
+    if headeroverride:
+        commandlist += ['-headeroverride={}'.format(headeroverride)]
+    if calib:
+        commandlist += ['-calib {}'.format(calib)]
+    if verbose:
+        commandlist += ['-verbose']
+    if warn:
+        commandlist += ['-warn']
+    if debug:
+        commandlist += ['-debug']
+    if recipe:
+        commandlist += [recipe]
+
+    # Run the command.
+    logger.info('Running {}.'.format(' '.join(commandlist)))
+    proc = subprocess.Popen(commandlist, env=oracenv, shell=False)
+    pid = proc.pid
+    proc.communicate()
+    status = proc.returncode
+
+    # Wait one second so that list of iles on disk doesn't contain the temporary files.
+    time.sleep(1)
+    # Get the .orac log file:
+    logname = os.path.join(outputdir, '.oracdr_{}.log'.format(str(int(pid))))
+    outputlog = os.path.join(outputdir, 'oracdr_{}.log'.format(str(int(pid))))
+    if os.path.isfile(logname):
+        shutil.move(logname, outputlog)
+    else:
+        logger.warning('Could not find logfile in outputdir.')
+        outputlog = None
+
+    # Get the list of created data files (.sdf or .fits)
+    datafiles = glob.glob(os.path.join(outputdir, '*.sdf'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.fits'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.fit'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.FIT'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.FITS'))
+
+    # Remove input files (assume that all symlinks are the input files)
+    outputdatafiles = []
+
+    for i in datafiles:
+        if not os.path.islink(i):
+            outputdatafiles.append(i)
+
+    if not outputdatafiles:
+        logger.warning('No SDF/FITS datafiles were found in outputdir {}'.format(outputdir))
+
+    # Get log files
+    logfiles = glob.glob(os.path.join(outputdir, 'log.*'))
+
+    # Get preview images.
+    pngfiles = glob.glob(os.path.join(outputdir, '*.png'))
+
+
+    returnvals = oracoutput(outputlog, outputdir, outputdatafiles, pngfiles, logfiles, status, pid)
+
+    if status != 0:
+        logger.error('ORAC-DR ended with an error! You may or may not care about this.')
+
+    return returnvals
+
+
+
+def picard(recipe, files, dataout=None,
+           recpars=None,
+           verbose=False, debug=False, warn=False):
+
+    """
+    Run a picard recipe on a group of files.
+
+    Arguments:
+    ----------
+    recipe (str): Name of instrument
+
+    files (str or list of str): if str: name of textfile containing
+      list of files. if list: list of input files. All paths
+      interpreted relative to current directory.
+
+    Keyword Arguments:
+    ------------------
+    dataout (str): location of output data directory; defaults to curr dir.
+
+    recpars (str): passed to --recpars option
+
+    verbose (bool): provide output from Starlink commands in log/stdout
+
+    debug (bool): provide debug output.
+
+    warn (bool): show Perl warning messages.
+
+    Returns:
+    --------
+    Return value is a named tuple with:
+
+     - runlog: name of output logfile.
+     - outputdir: path of output directory
+     - datafiles: list of output data files.
+     - imagefiles: list of output image files.
+     - logfiles: list of log.* files
+     - status: int, return code from suprocess.Popen
+     - pid (int): pid of perl parent process.
+
+
+
+    """
+    picardenv = env.copy()
+    picardenv['ORAC_DIR'] = os.path.join(starpath, 'bin', 'oracdr', 'src')
+    picardenv['ORAC_PERL5LIB'] = os.path.join(picardenv['ORAC_DIR'], 'lib', 'perl5')
+    picardenv['STAR_LOGIN'] = '1'
+
+    if dataout:
+        dataout = os.path.abspath(dataout)
+        if not os.path.isdir(dataout):
+            logger.error('Requested ORAC_DATA_OUT {} does not exist'.format(dataout))
+            raise Exception('Requested ORAC_DATA_OUT {} does not exist'.format(dataout))
+    else:
+        dataout = os.getcwd()
+
+    # Actually run in a temporary working directory in data out. Make that now.
+    outputdir = os.path.abspath(tempfile.mkdtemp(prefix='PICARDworking', dir=dataout))
+    picardenv['ORAC_DATA_OUT'] = outputdir
+    logger.debug('Working output directory for ORAC-DR is {}.'.format(outputdir))
+
+    # Get files:
+    if isinstance(files, basestring):
+        # Assume its a text file containing input files.
+        if not os.path.isfile(files):
+            logger.error('List of inputfiles {} not found.'.format(files))
+            raise Exception('List of inputfiles {} not found.'.format(files))
+        fileargument = ['`cat {}`'.format(files)]
+    else:
+        # Assume its a list of strings.
+        inputfiles = []
+        for f in files:
+            if not os.path.isfile(f):
+                logger.warning('Input file {} not found.'.format(files))
+            else:
+                inputfiles.append(f)
+        if not inputfiles:
+            logger.error('No input files found')
+            raise Exception('No input files found')
+        else:
+            fileargument = inputfiles
+
+
+    # Orac dr perl command
+    starperl = os.path.join(picardenv['STARLINK_DIR'], 'Perl', 'bin', 'perl')
+    script = os.path.join(picardenv['ORAC_DIR'], 'bin', 'picard')
+    # Set up commands:
+    commandlist = [starperl, script, '-log=sf', '-nodisplay']
+
+    if recpars:
+        commandlist += ['-recpars={}'.format(recpars)]
+
+    if verbose:
+        commandlist += ['-verbose']
+    if warn:
+        commandlist += ['-warn']
+    if debug:
+        commandlist += ['-debug']
+
+
+    commandlist += [recipe]
+
+    commandlist += fileargument
+
+    # Run the command.
+    logger.info('Running {}.'.format(' '.join(commandlist)))
+    proc = subprocess.Popen(commandlist, env=picardenv, shell=False)
+    pid = proc.pid
+    proc.communicate()
+    status = proc.returncode
+
+    # Wait one second so that list of files on disk doesn't contain the temporary files.
+    time.sleep(1)
+    # Get the .picard log file:
+    logname = os.path.join(outputdir, '.picard_{}.log'.format(str(int(pid))))
+    outputlog = os.path.join(outputdir, 'picard_{}.log'.format(str(int(pid))))
+    if os.path.isfile(logname):
+        shutil.move(logname, outputlog)
+    else:
+        logger.warning('Could not find logfile in outputdir.')
+        outputlog = None
+
+    # Get the list of created data files (.sdf or .fits)
+    datafiles = glob.glob(os.path.join(outputdir, '*.sdf'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.fits'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.fit'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.FIT'))
+    datafiles += glob.glob(os.path.join(outputdir, '*.FITS'))
+
+    # Remove input files (assume that all symlinks are the input files)
+    outputdatafiles = []
+
+    for i in datafiles:
+        if not os.path.islink(i):
+            outputdatafiles.append(i)
+
+    if not outputdatafiles:
+        logger.warning('No SDF/FITS datafiles were found in outputdir {}'.format(outputdir))
+
+    # Get log files
+    logfiles = glob.glob(os.path.join(outputdir, 'log.*'))
+
+    # Get preview images.
+    pngfiles = glob.glob(os.path.join(outputdir, '*.png'))
+
+    returnvals = oracoutput(outputlog, outputdir, outputdatafiles, pngfiles, logfiles, status, pid)
+
+    if status != 0:
+        logger.error('PICARD ended with an error! You may or may not care about this.')
+
+    return returnvals
 
 
 #-------------

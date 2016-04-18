@@ -21,13 +21,15 @@
 This script generates python modules to call all the commands in a
 Starlink package, given a Starlink build tree.
 
-Usage: generate_functions.py [-q | -v] <buildtree> [<package>...]
+Usage: generate_functions.py [-q | -v] [--orac <oractree>] <buildtree> [<package>...]
        generate_functions.py --help
 
 Options:
        -h, --help     show help
        -v, --verbose  show more output info
        -q, --quiet    show less output info
+
+       -o, --orac     optionally build picard/orac modules from an oractree
 
 If no packages are specified, it will generate python modules for:
 KAPPA, cupid, convert, smurf, figaro, surf, and ccdpack.
@@ -38,6 +40,7 @@ It will look under <buildtree>/applications/modulename.lower() for:
 <modulename>.hlp and <commandname>.ifl files.
 """
 
+import glob
 import logging
 import os
 import re
@@ -57,6 +60,33 @@ parinfo = namedtuple('parinfo',
                      'name type_ prompt default position range_ ' \
                      'in_ access association ppath vpath list_ readwrite')
 commandinfo = namedtuple('commandinfo', 'name description pardict')
+
+picardtemplate = ["def {}(*args, **kwargs):",
+                  "    \"\"\"Run PICARD'S {} recipe.\"\"\"",
+                  "    return wrapper.picard('{}', *args, **kwargs)",
+              ]
+
+def generate_picard_command(ORAC_DIR):
+
+    recipes = glob.glob(os.path.join(ORAC_DIR, 'recipes', 'PICARD', '*'))
+
+    header = "Module for running PICARD recipes from python."
+    imports = "from . import wrapper"
+    module = ['"""', header, '"""', '', imports, '']
+
+    for recipe in recipes:
+        recname = os.path.split(recipe)[1]
+        arguments = (recname.lower(), recname, recname)
+        command = '\n'.join(picardtemplate)
+        command = command.format(*arguments)
+        module += [command, '', '']
+
+    f = open('picard.py', 'w')
+    f.writelines('\n'.join(module))
+    f.close()
+
+
+
 
 
 
@@ -271,7 +301,7 @@ def get_module_info(hlp, iflpath):
         try:
             ifl = find_starlink_file(iflpath, comname + '.ifl')
             logger.debug('Parsing ifl file')
-            parameter_info = _ifl_parser(ifl, parameter_info, comname=comname, prefer_hlp_prompt=True)
+            parameter_info = _ifl_parser(ifl, parameter_info, comname=comname, prefer_hlp_prompt=False)
             logger.debug('Creating command info')
             moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
 
@@ -697,6 +727,7 @@ if __name__ == '__main__':
 
     buildpath = args['<buildtree>']
     packages = args['<package>']
+    oractree = args['<oractree>']
 
     if not packages:
         packages = DEFAULTPACKAGES
@@ -757,3 +788,7 @@ if __name__ == '__main__':
         # Create the <modulename>.py file.
         create_module(modulename, commandnames, docstrings, commanddict)
 
+    # Now create oracdr and picard options.
+    if oractree:
+        logger.info('Creating PICARD module from {}'.format(oractree))
+        generate_picard_command(oractree)
