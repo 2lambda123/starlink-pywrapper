@@ -380,10 +380,12 @@ def starcomm(command, commandname, *args, **kwargs):
         # If there was an error, raise a python error and print the
         # starlink output to screen.
         if status != 0:
-            raise Exception('Starlink error occured during command:\n'
-                                '%s %s\n ' % (command, arg) +
-                                'stdout and stderr are appended below.\n'
-                                + stdout + '\n' + stderr)
+            message = ('Starlink error occured during command:\n'
+                       '{} {}\n '
+                       'stdout and stderr are appended below.\n{}\n{}')
+            message = message.format(command, args, stdout, stderr)
+
+            raise Exception(message)
         else:
 
             # Show stdout as a debug log.
