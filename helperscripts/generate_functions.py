@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (C) 2016 East Asian Observatory
 #
 # This program is free software: you can redistribute it and/or modify
