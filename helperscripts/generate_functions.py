@@ -103,7 +103,7 @@ def _get_python_type(startype):
 
     if startype.upper() == '_LOGICAL':
         return 'bool'
-    elif startype.upper() == '_INTEGER' or startype.upper() == '_integer':
+    elif startype.upper() == '_INTEGER':
         return 'int'
     elif startype.upper() == '_REAL' or startype.upper() == '_DOUBLE':
         return 'float'
@@ -442,12 +442,12 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
         if param:
             for i in param.values():
 
-                # If access is None, fallback onto readwrite (if it exists)?
+                # If access is None, assume that it is 'UPDATE' (from SUN/115 docs)
                 readwrite = i.access
+                if not i.access:
+                    readwrite = 'UPDATE'
                 if readwrite:
                     readwrite = readwrite.lower().replace("'",'').replace('"','')
-                elif not readwrite and i.readwrite:
-                    readwrite = i.readwrite
 
                 # If dynamic is start of vpath, and there is no
                 # default, replace the default with 'dyn.'
@@ -727,6 +727,7 @@ sunnames = {
     'figaro': 'sun86',
     'surf': 'sun216',
     'ccdpack': 'sun139',
+    'polpack': 'sun223'
 }
 
 
