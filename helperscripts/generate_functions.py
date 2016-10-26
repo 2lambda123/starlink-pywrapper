@@ -569,9 +569,17 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
                 sunurl)]
             doc += ['']
 
+        if 'device' in [i.name for i in positional]:
+            device = True
+            print('Found device! in positional argument {}'.format(name))
+        else:
+            device = False
+        if name=='gdset':
+            print(positional)
+
         # Return a dictionary for each command, with the docstrings
-        # and the call signature.
-        docstringdict[name] = ('\n'.join(doc), callsignature)
+        # and the call signature, and if it needs 'device' mangling or not.
+        docstringdict[name] = ('\n'.join(doc), callsignature, device)
     return docstringdict
 
 
@@ -621,6 +629,7 @@ def create_module(module, names, docstrings, commanddict):
         commandline = commanddict[name]
         callsignature = docstrings[name][1]
         docstring = docstrings[name][0]
+        device = docstrings[name][2]
 
         # Add a line indicating which binary/script it is trying to run to docstring.
         docstring = docstring.split('\n')
@@ -630,15 +639,25 @@ def create_module(module, names, docstrings, commanddict):
         if iskeyword(name):
             name = name + '_'
 
+        if not device:
+            callsignature_starcomm = callsignature
+        else:
+            # Give device as a definite keyword.
+            # 1. Remove device from the list of arguments.
+            newcall = ' '.join(callsignature.split('device, '))
+            # 2. Add it in as a keyword argument
+            clist = newcall.split('**kwargs')
+            callsignature_starcomm = clist[0] + ' device=device, **kwargs' + clist[1]
+
         methodcode = [
-             ' '*0 + 'def {}({}):'.format(name, callsignature),
-             ' '*4 + '"""',
-             '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
-             ' '*4 + '"""',
-             ' '*4 + 'return wrapper.starcomm("{}", "{}", {})'.format(commandline,
-                                                              name,
-                                                                    callsignature),
-             '\n',
+            ' '*0 + 'def {}({}):'.format(name, callsignature),
+            ' '*4 + '"""',
+            '\n'.join([i if not i else ' '*4 + i  for i in docstring]),
+            ' '*4 + '"""',
+            ' '*4 + 'return wrapper.starcomm("{}", "{}", {})'.format(commandline,
+                                                                     name,
+                                                                     callsignature_starcomm),
+            '\n',
         ]
 
         methodcode = ['\n' if i.isspace() else i for i in methodcode]

@@ -218,6 +218,16 @@ starlink_other_variables = {
     "SYS_SPECX": "share/specx",
     }
 
+xwindow_names = {
+    "xw" : "xwindows",
+    "x2w" : "xwindows2",
+    "x3w" : "xwindows3",
+    "x4w" : "xwindows4",
+    "xwindows" : "xwindows",
+    "x2windows" : "xwindows2",
+    "x3windows" : "xwindows3",
+    "x4windows" : "xwindows4"
+}
 
 # Return type for PICARD and ORAC-DR
 oracoutput = namedtuple('oracoutput', 'runlog outdir datafiles imagefiles logfiles status pid')
@@ -367,8 +377,23 @@ def starcomm(command, commandname, *args, **kwargs):
             command = command.replace('$' + i, env[i])
             command = command.replace('${' + i + '}', env[i])
 
-        # Call the process: note errors are written to stdout rather
-        # than stderr, so we have to redirect that as well.
+
+        # Check if there is a 'device' keyword? NB this won't work if
+        # it is an argument...
+        xmake = False
+        if 'device' in kwargs:
+            if kwargs['device'].endswith('/GWM'):
+                xmake = True
+                gdname = kwargs['device'].split('/GWM')[0]
+            elif kwargs['device'] in xwindow_names:
+                xmake = True
+                gdname = xwindow_names[kwargs['device']]
+
+        if xmake:
+            logger.info('Creating xwindow named {}'.format(gdname))
+            xmakecomm = os.path.join(env['STARLINK_DIR'], 'bin', 'xmake')
+            subprocess.Popen([xmakecomm, gdname], env=env)
+
         logger.debug([command] + arg)
         proc = subprocess.Popen([command] + arg, env=env, shell=False,
                                 stderr=subprocess.PIPE, stdout=subprocess.PIPE)
