@@ -768,6 +768,7 @@ DEFAULTPACKAGES = [
     'SMURF',
     'SURF',
     'CCDPACK',
+    'POLPACK',
 ]
 if __name__ == '__main__':
 
