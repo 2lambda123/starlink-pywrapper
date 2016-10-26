@@ -771,7 +771,7 @@ def oracdr(instrument, loop='file', dataout=None,
 
 
 def picard(recipe, files, dataout=None,
-           recpars=None,
+           recpars=None, oracdir=None,
            verbose=False, debug=False, warn=False):
 
     """
@@ -790,6 +790,9 @@ def picard(recipe, files, dataout=None,
     dataout (str): location of output data directory; defaults to curr dir.
 
     recpars (str): passed to --recpars option
+
+    oracdir (str): use custom orac recipe dir; by default
+      starpath/bin/oracdr/src will be used
 
     verbose (bool): provide output from Starlink commands in log/stdout
 
@@ -813,7 +816,10 @@ def picard(recipe, files, dataout=None,
 
     """
     picardenv = env.copy()
-    picardenv['ORAC_DIR'] = os.path.join(starpath, 'bin', 'oracdr', 'src')
+    if not oracdir:
+        picardenv['ORAC_DIR'] = os.path.join(starpath, 'bin', 'oracdr', 'src')
+    else:
+        picardenv['ORAC_DIR'] = oracdir
     picardenv['ORAC_PERL5LIB'] = os.path.join(picardenv['ORAC_DIR'], 'lib', 'perl5')
     picardenv['STAR_LOGIN'] = '1'
 
