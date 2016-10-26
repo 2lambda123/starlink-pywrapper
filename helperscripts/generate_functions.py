@@ -22,7 +22,7 @@
 This script generates python modules to call all the commands in a
 Starlink package, given a Starlink build tree.
 
-Usage: generate_functions.py [-q | -v] [--orac <oractree>] <buildtree> [<package>...]
+Usage: generate_functions.py [-q | -v] [--orac=<oractree>] <buildtree> [<package>...]
        generate_functions.py --help
 
 Options:
@@ -30,7 +30,7 @@ Options:
        -v, --verbose  show more output info
        -q, --quiet    show less output info
 
-       -o, --orac     optionally build picard/orac modules from an oractree
+       -o, --orac=<oractree>     optionally build picard/orac modules from an oractree
 
 If no packages are specified, it will generate python modules for:
 KAPPA, cupid, convert, smurf, figaro, surf, and ccdpack.
@@ -728,7 +728,10 @@ if __name__ == '__main__':
 
     buildpath = args['<buildtree>']
     packages = args['<package>']
-    oractree = args['<oractree>']
+    if '<oractree>' in args:
+        oractree = args['<oractree>']
+    else:
+        oractree = None
 
     if not packages:
         packages = DEFAULTPACKAGES
