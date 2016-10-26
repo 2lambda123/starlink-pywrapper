@@ -45,6 +45,8 @@ import glob
 import logging
 import os
 import re
+import shutil
+import subprocess
 
 from collections import namedtuple
 from keyword import iskeyword
@@ -60,7 +62,7 @@ logger = logging.getLogger(__name__)
 parinfo = namedtuple('parinfo',
                      'name type_ prompt default position range_ ' \
                      'in_ access association ppath vpath list_ readwrite')
-commandinfo = namedtuple('commandinfo', 'name description pardict')
+commandinfo = namedtuple('commandinfo', 'name description pardict longdescription')
 
 picardtemplate = ["def {}(*args, **kwargs):",
                   "    \"\"\"Run PICARD'S {} recipe.\"\"\"",
@@ -207,7 +209,7 @@ def _ifl_get_parameter_value(paramlist, value):
     return result
 
 
-def get_module_info(hlp, iflpath):
+def get_module_info(hlp, iflpath, create_longhelp=False, rstpath=None):
 
     """
     Get info on the commands in a Starlink module.
@@ -218,11 +220,15 @@ def get_module_info(hlp, iflpath):
 
     Returns a dictionary with commandnames as keys, and a dictionary
     of parinfo tuples (keyed by parameter name).
+
+    If create_longhelp is true, also returns a dictionary of long helps for each command line
     """
     matchcommandname = re.compile('^1 [A-Z0-9]+$')
     comnames = [i for i in hlp if matchcommandname.search(i)]
     moduledict={}
 
+
+    longhelp = {}
     for i in range(len(comnames)):
         comname = comnames[i].split()[1].strip().lower()
         comindex = hlp.index(comnames[i])
@@ -241,6 +247,22 @@ def get_module_info(hlp, iflpath):
 
         commanddoc = hlp[comindex:nextcomindex]
         comdescrip = commanddoc[1].strip()
+
+
+        if create_longhelp:
+
+            longhelp[comname] = commanddoc
+
+        try:
+            descripindex = commanddoc.index('Description:\n')
+            parindex = commanddoc.index('2 Parameters\n')
+            description = commanddoc[descripindex+1:parindex]
+            description = [i.lstrip().rstrip('\n') for i in description] + ['']
+            if description[0] == '':
+                description = description[1:]
+        except:
+            logger.warning('Could not find description in .hlp file for {}'.format(comname))
+            description = None
 
         try:
             parindex = commanddoc.index('2 Parameters\n')
@@ -296,7 +318,7 @@ def get_module_info(hlp, iflpath):
         except ValueError:
             parameter_info = None
 
-        moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
+        moduledict[comname] = commandinfo(comname, comdescrip, parameter_info, description)
 
         # find ifl file
         try:
@@ -304,14 +326,15 @@ def get_module_info(hlp, iflpath):
             logger.debug('Parsing ifl file')
             parameter_info = _ifl_parser(ifl, parameter_info, comname=comname, prefer_hlp_prompt=False)
             logger.debug('Creating command info')
-            moduledict[comname] = commandinfo(comname, comdescrip, parameter_info)
+            moduledict[comname] = commandinfo(comname, comdescrip, parameter_info, description)
 
         except IOError:
             logger.warning('no ifl file found for %s' % comname)
 
-
-
-    return moduledict
+    if create_longhelp:
+        return moduledict, longhelp
+    else:
+        return moduledict
 
 
 def parse_help_file(helpsection, comname):
@@ -431,7 +454,12 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
     for command, info in moduledict.items():
         name = command
         doc = [info.description + '\n']
+        longdescription = info.longdescription
+        if longdescription:
+            doc = doc + longdescription
+
         param = info.pardict
+
 
         positional = []
         inputpar = []
@@ -779,20 +807,39 @@ if __name__ == '__main__':
 
         # Find the <package>.hlp, <package>.sh and path for ifl files:
         rootpath = os.path.join(buildpath, 'applications', modulename.lower())
+        starlink = os.environ['STARLINK_DIR']
+
+        # Create a temp directory with .rst versions of all .f and .c files.
+        tempdir = 'tempworkingdir'
+        os.mkdir(tempdir)
+        logger.info('Creating .rst help files from all .f and .c files in module')
+        subprocess.call("for i in `find {} -name '*.f'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.c'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.html'`; do bname=$(basename $i .html) &&  python ../doc/html2rst.py $i > {}/$bname.rst; done".format(tempdir, tempdir), shell=True)
+
 
         helpfile = find_starlink_file(rootpath, modulename.lower() + '.hlp')
         shfile = find_starlink_file(rootpath, modulename.lower() + '.sh')
 
         # Parse the .hlp and .ifl files to get a dictionary of commands
         # and parameters (with parinfo namedtuples to describe parameter).
-        moduledict = get_module_info(helpfile, rootpath)
+        moduledict = get_module_info(helpfile, rootpath, create_longhelp=False)
+
+        helpdir = modulename.lower() + '_help'
+        if not os.path.isdir(helpdir):
+            os.mkdir(helpdir)
+        for com in moduledict:
+            rstfile = os.path.join(tempdir, com + '.rst')
+            if os.path.isfile(rstfile):
+                shutil.copy(rstfile, helpdir)
+        shutil.rmtree(tempdir)
 
 
         # Clean up a few commands we don't want.  Specifically the
         # modulename itself, and any interactive _help.
         if modulename.lower() in  moduledict:
             moduledict.pop(modulename.lower())
-        helpname = modulename.lower() + 'help'
+        helpname = modulename.lower() + '_help'
         if helpname in moduledict:
             moduledict.pop(helpname)
         if len(modulename) > 3:
