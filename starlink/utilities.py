@@ -72,6 +72,7 @@ def get_module_function_summary(module):
 
 import inspect
 from types import FunctionType, ModuleType
+from pkg_resources import resource_filename
 
 def starhelp(myobj):
     """
@@ -82,10 +83,12 @@ def starhelp(myobj):
         doc = get_module_function_summary(myobj)
 
     elif isinstance(myobj, FunctionType):
-        modulename = myobj.__module__
+        modulename = myobj.__module__.split('.')[1]
+        dirname = modulename + '_help'
         functionname = myobj.__name__
-        dirname = os.path.dirname(inspect.getmodule(myobj).__file__)
-        filename = os.path.join(dirname, 'helpfiles', modulename + '_' + functionname + '_longhelp.txt')
+        filename = resource_filename(myobj.__module__,
+                                     os.path.join(dirname, functionname+'.rst')
+                                     )
         if os.path.isfile(filename):
             f = open(filename, 'r')
             doc = f.readlines()
