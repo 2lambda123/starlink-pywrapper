@@ -1,3 +1,5 @@
+..title:: Starlink-Wrapper's Documentation
+
 Starlink-Wrapper's Documentation
 =================================
 
@@ -105,17 +107,21 @@ Contents:
    :toctree: _autosummary
 
    starlink.wrapper
+   starlink.hdsutils
+   starlink.utilities
 
-   starlink.convert
-   starlink.cupid
-   starlink.kappa
-   starlink.smurf
 
    starlink.ccdpack
+   starlink.convert
+   starlink.cupid
    starlink.figaro
+   starlink.kappa
+   starlink.smurf
    starlink.surf
 
-   starlink.hdsutils
+   starlink.picard
+
+
 
 
 
