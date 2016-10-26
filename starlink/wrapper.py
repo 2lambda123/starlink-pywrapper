@@ -270,6 +270,9 @@ def setup_starlink_environ(starpath, adamdir,
     # Set this ADAM_USER to be used
     env['ADAM_USER'] = adamdir
 
+    # don't let the MERS library split long lines?
+    env['MSG_SZOUT'] = "0"
+
     # Add the CONVERT environ variables to the env.
     env.update(condict)
 
@@ -287,7 +290,9 @@ def setup_starlink_environ(starpath, adamdir,
 
     # Setting up the Path (note that we are using shell=False)
     originalpath = os.environ['PATH']
-    env['PATH'] = os.path.pathsep.join([os.path.join(starpath, 'bin'),
+    env['PATH'] = os.path.pathsep.join([
+                                    os.path.join(starpath, 'bin', 'startcl'),
+                                    os.path.join(starpath, 'bin'),
                                     os.path.join(starpath, 'starjava', 'bin'),
                                     originalpath])
 
