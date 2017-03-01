@@ -24,7 +24,8 @@ def get_hds_values(comname, adamdir):
         # Fix up the nameptr values (if they are the only thing in the
         # dictionary)
         fixuplist = [i for i in results.keys()
-                     if (isinstance(results[i], dict) and results[i].keys()==['nameptr'])]
+                     if (isinstance(results[i], dict)
+                         and list(results[i].keys())==['nameptr'])]
 
         for i in fixuplist:
             results[i] = results[i]['nameptr']
