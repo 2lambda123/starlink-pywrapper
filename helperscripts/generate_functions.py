@@ -816,7 +816,7 @@ if __name__ == '__main__':
         logger.info('Creating .rst help files from all .f and .c files in module')
         subprocess.call("for i in `find {} -name '*.f'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
         subprocess.call("for i in `find {} -name '*.c'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
-        subprocess.call("for i in `find {} -name '*.html'`; do bname=$(basename $i .html) &&  python ../doc/html2rst.py $i > {}/$bname.rst; done".format(tempdir, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.html'`; do bname=$(basename $i .html) &&  html2rest $i > {}/$bname.rst; done".format(tempdir, tempdir), shell=True)
 
 
         helpfile = find_starlink_file(rootpath, modulename.lower() + '.hlp')
