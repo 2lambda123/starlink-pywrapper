@@ -209,7 +209,7 @@ def _ifl_get_parameter_value(paramlist, value):
     return result
 
 
-def get_module_info(hlp, iflpath, create_longhelp=False, rstpath=None):
+def get_module_info(hlp, iflpath, create_longhelp=False):
 
     """
     Get info on the commands in a Starlink module.
@@ -223,6 +223,8 @@ def get_module_info(hlp, iflpath, create_longhelp=False, rstpath=None):
 
     If create_longhelp is true, also returns a dictionary of long helps for each command line
     """
+
+    logger.debug('Creating list of commandnames from hlp file')
     matchcommandname = re.compile('^1 [A-Z0-9]+$')
     comnames = [i for i in hlp if matchcommandname.search(i)]
     moduledict={}
@@ -443,7 +445,7 @@ def formatkeyword(vals, style='numpy', default=True):
             doc[0] += ':\n{}'.format(promptstring)
     return doc
 
-def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
+def make_docstrings(moduledict, sunname=None, kstyle='numpy', uselongerdescription=False):
 
     """
     Create the docstrings for a command.
@@ -455,7 +457,7 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy'):
         name = command
         doc = [info.description + '\n']
         longdescription = info.longdescription
-        if longdescription:
+        if longdescription and uselongerdescription:
             doc = doc + longdescription
 
         param = info.pardict
@@ -810,12 +812,13 @@ if __name__ == '__main__':
         rootpath = os.path.join(buildpath, 'applications', modulename.lower())
         starlink = os.environ['STARLINK_DIR']
 
-        # Create a temp directory with .rst versions of all .f and .c files.
+        # Create a temp directory with .rst versions of all .f, .c and .py files.
         tempdir = 'tempworkingdir'
         os.mkdir(tempdir)
-        logger.info('Creating .rst help files from all .f and .c files in module')
+        logger.info('Creating .rst help files from all .f and .c  and .py files in module')
         subprocess.call("for i in `find {} -name '*.f'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
         subprocess.call("for i in `find {} -name '*.c'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.py'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
         subprocess.call("for i in `find {} -name '*.html'`; do bname=$(basename $i .html) &&  html2rest $i > {}/$bname.rst; done".format(tempdir, tempdir), shell=True)
 
 
@@ -823,7 +826,7 @@ if __name__ == '__main__':
         shfile = find_starlink_file(rootpath, modulename.lower() + '.sh')
 
         # Parse the .hlp and .ifl files to get a dictionary of commands
-        # and parameters (with parinfo namedtuples to describe parameter).
+        # and parameters (with parinfo namedtuples to describe parameter), as well as the longhelp
         moduledict = get_module_info(helpfile, rootpath, create_longhelp=False)
 
         helpdir = modulename.lower() + '_help'
