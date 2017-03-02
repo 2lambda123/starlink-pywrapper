@@ -1,5 +1,3 @@
-..title:: Starlink-Wrapper's Documentation
-
 Starlink-Wrapper's Documentation
 =================================
 
@@ -11,9 +9,11 @@ installation to be available. Please use the method
 :meth:`starlink.wrapper.change_starpath` to set the correct $STARLINK_DIR path
 if its not found automatically.
 
-Starlink packages are available as starlink.<modulename>, and commands
-as <modulename>.<commandname>.
+Starlink packages are wrapped each in their own python module,
+available as `starlink.<modulename>`, and commands as
+starlink.<modulename>.<commandname>.
 
+E.g. to import the KAPPA module and run teh stats command, you can do:
 
 >>> from starlink import kappa
 >>> statsvals = kappa.stats('my/ndf.sdf')
@@ -54,9 +54,7 @@ to DEBUG, i.e.:
 
 
 By default, this package will run commands from a STARLINK_DIR defined
-by the location indicated by the environ variable STARLINK_DIR. If that is is
-not set, it will attempt to see if the module is installed inside a
-Starlink installation and use that.
+by the location indicated by the environ variable $STARLINK_DIR.
 
 To see which Starlink is currently being used examine the variable:
 
@@ -110,14 +108,15 @@ Contents:
    starlink.hdsutils
    starlink.utilities
 
-
+   starlink.atools
    starlink.ccdpack
    starlink.convert
    starlink.cupid
    starlink.figaro
    starlink.kappa
+   starlink.polpack
    starlink.smurf
-   starlink.surf
+
 
    starlink.picard
 

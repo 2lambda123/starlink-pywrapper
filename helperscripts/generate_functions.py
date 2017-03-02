@@ -766,9 +766,9 @@ DEFAULTPACKAGES = [
     'Figaro',
     'CONVERT',
     'SMURF',
-    'SURF',
     'CCDPACK',
     'POLPACK',
+    'ATOOLS',
 ]
 if __name__ == '__main__':
 
