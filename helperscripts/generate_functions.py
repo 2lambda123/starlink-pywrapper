@@ -187,7 +187,7 @@ def _ifl_parser(ifllines, parameter_info, comname='', prefer_hlp_prompt=False):
         else:
             values.append(None)
             values.append(None)
-            logger.debug('%s: parname %s found in ifl but was not in .hlp' % (comname, parname))
+            logger.warning('%s: parname %s found in ifl but was not in .hlp' % (comname, parname))
 
         pardict[parname] =  parinfo(parname, *values)
 
@@ -817,8 +817,8 @@ if __name__ == '__main__':
         os.mkdir(tempdir)
         logger.info('Creating .rst help files from all .f and .c  and .py files in module')
         subprocess.call("for i in `find {} -name '*.f'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
-        subprocess.call("for i in `find {} -name '*.c'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
-        subprocess.call("for i in `find {} -name '*.py'`; do bname=$(basename $i .f); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.c'`; do bname=$(basename $i .c); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
+        subprocess.call("for i in `find {} -name '*.py'`; do bname=$(basename $i .py); {}/bin/sst/prohtml in=$i reformat=true inclusion=false out={}/$bname.html accept; done >>/dev/null".format(rootpath, starlink, tempdir), shell=True)
         subprocess.call("for i in `find {} -name '*.html'`; do bname=$(basename $i .html) &&  html2rest $i > {}/$bname.rst; done".format(tempdir, tempdir), shell=True)
 
 
@@ -836,6 +836,8 @@ if __name__ == '__main__':
             rstfile = os.path.join(tempdir, com + '.rst')
             if os.path.isfile(rstfile):
                 shutil.copy(rstfile, helpdir)
+            else:
+                logger.debug('No rstfile found for {}'.format(com))
         shutil.rmtree(tempdir)
 
 
