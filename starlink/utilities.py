@@ -22,7 +22,11 @@ import logging
 import os
 import pydoc
 from inspect import getmembers, isfunction
-from itertools import imap
+
+try:
+    from itertools import imap
+except ImportError:
+    imap = map
 
 from astropy.io import fits
 from starlink import ndfpack
@@ -65,7 +69,7 @@ def get_module_function_summary(module):
     for f in functionslist:
         summaries[f[0]] = next(s for s in f[1].__doc__.split('\n') if s)
     width = max(imap(len, summaries))
-    keys = summaries.keys()
+    keys = list(summaries.keys())
     keys.sort()
     return '\n'.join( ['{:<{width}}: {}'.format(key, summaries[key], width=width+1) for key in keys])
 
