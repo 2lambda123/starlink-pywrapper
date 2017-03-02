@@ -306,7 +306,7 @@ def change_starpath(starlinkdir):
     """
     Change the $STARLINK_DIR used by this module.
 
-    Note that this needs to change the module level env and starpath
+    Note that this changes the module level env and starpath
     variables.
 
     """
@@ -327,29 +327,46 @@ def starcomm(command, commandname, *args, **kwargs):
     Carries out the starlink command, and returns a namedtuple of the
     starlink parameter values (taken from $ADAM_DIR/<com>.sdf
 
-    Args:
-        command (str): path of command to run, e.g. '$SMURFDIR/makecube'
-        commandname (str): name of command (used for getting output values)
+    Arguments
+    ---------
+    command: str
+       The path of a command to run, e.g. '$SMURFDIR/makecube'
 
-    Keyword arguments:
-        returnstdout (bool): return the commands std out as string
+    commandname: str
+       The name of command (used for getting output values).
+
+    Keyword arguments
+    -----------------
+    returnstdout: bool
+
+        Have the string that would have been written to stdout in a
+        normal starlink session be returned from this function as a
+        string.
+
 
     Other arguments and keyword arguments are evaluated by the command
     being called. Please see the Starlink documentation for the command.
-    The standard Starlink package environmental varaibles (e.g. KAPPA_DIR,
+    The standard Starlink package environmental variables (e.g. KAPPA_DIR,
     SMURF_DIR etc.) can be used inside the command name.
 
-    Returns:
-       namedtuple: all the input and output params for this command.
+    Returns
+    -------
+
+       namedtuple: Containing all the input and output params for this command as attributes.
        stdout: the stdout as a string (only returned if returnStdOut=True)
 
-    Example:
-        res = starcomm('$KAPPA_DIR/stats', 'stats', ndf='myndf.sdf')
+    Example
+    -------
 
-    Notes:
-       Starlink parameters or functions that are reserved python names
-       (e.g. 'in') can be called by appending an underscore. E.g.:
-       in_='myndf.sdf'.
+    >>> res = starcomm('$KAPPA_DIR/stats', 'stats', ndf='myndf.sdf')
+
+    Notes
+    -----
+
+    Starlink parameters or functions that are reserved python names
+    (e.g. 'in') can be called by appending an underscore. E.g.
+
+    >>> in_='myndf.sdf'
 
     """
 
@@ -413,7 +430,7 @@ def starcomm(command, commandname, *args, **kwargs):
             message = ('Starlink error occured during command:\n'
                        '{} {}\n '
                        'stdout and stderr are appended below.\n{}\n{}')
-            message = message.format(command, args, stdout, stderr)
+            message = message.format(command, args, stdout.decode(), stderr.decode())
 
             raise Exception(message)
         else:
@@ -576,50 +593,64 @@ def oracdr(instrument, loop='file', dataout=None,
            verbose=False, debug=False, warn=False):
     """Run oracdr on a batch of files.
 
-    Arguments:
-    ----------
-    instrument (str): Name of instrument
+    Arguments
+    ---------
+    instrument: str
+        Name of instrument
 
-    Keyword Arguments:
-    ------------------
+    Keyword Arguments
+    -----------------
 
-    loop (str): 'file' or 'list'. determine if input obs are specified as
+    loop: str
+      'file' or 'list'. determine if input obs are specified as
       raw file names/paths or as a list of observation numbers and a
       utdate. ['file']
 
-    dataout (str): location of output data directory; defaults to curr dir.
+    dataout: str
+       Location of output data directory; defaults to current dir.
 
-    datain (str): location of input data; defaults to curr dir.
+    datain: str
+       Location of input data; defaults to current dir.
 
-    recipe (str): Name of recipe to run. If None, use recipe from headers.
+    recipe str:
+       Name of recipe to run. If None, use recipe from headers.
 
-    onegroup (Bool): Force all observations into one processing group.
+    onegroup: Bool
+       Force all observations into one processing group.
 
-    rawfiles (str or list of filenames/paths) : if str, a text file
-      giving names of all input files. If list, then list of all input
-      files as python list. Files are taken relative to datain, or can
-      be given as absolute path. Only used if loop='file'
+    rawfiles:  str or list of filenames/paths
+      If a string, this is a text file giving names of all input
+      files. If list, then list of all input files as python
+      list. Files are taken relative to datain, or can be given as
+      absolute path. Only used if loop='file'
 
-    utdate (int, YYYYMMDD): utdate of input data. Only used if loop='list'
+    utdate: int, YYYYMMDD
+       The utdate of the input data. Only used if loop='list'
 
-    obslist List(int): list of input scan numbers. Input files will be
-      generated assuming JCMT/UKIRT data structure, similar to
+    obslist: List(int)
+      List of input scan numbers. Input file names will be generated
+      assuming JCMT/UKIRT directory structure, similar to
       <datain>/<utdate>/<scannumber>/rawfiles .
 
-    headeroverride (str, filename): file with optional header overrides.
+    headeroverride: str, filename
+       File with optional header overrides.
 
-    calib (str): calibration overrides. Accepts comma separated key=value pairs.
+    calib: str
+       Calibration overrides. Accepts comma separated key=value pairs.
 
-    verbose (bool): provide output from Starlink commands in log/stdout
+    verbose: bool
+       Include output from Starlink commands in log/stdout.
 
-    debug (bool): provide debug output.
+    debug: bool
+       Include debug output in log/stdout.
 
-    warn (bool): show Perl warning messages.
+    warn: bool
+       Show Perl warning messages.
 
-    Returns:
-    --------
+    Returns
+    -------
 
-    Return value is a named tuple with:
+    Return value is a named tuple with the following attributes:
 
      - runlog: name of output logfile.
      - outputdir: path of output directory
@@ -630,8 +661,8 @@ def oracdr(instrument, loop='file', dataout=None,
      - pid (int): pid of perl parent process.
 
 
-    Notes:
-    ------
+    Notes
+    -----
     This will *not* raise an exception if ORAC-DR ended with an error;
     it is up to the calling code to check the status if required.
 
@@ -807,32 +838,40 @@ def picard(recipe, files, dataout=None,
     """
     Run a picard recipe on a group of files.
 
-    Arguments:
+    Arguments
     ----------
-    recipe (str): Name of instrument
+    recipe: str
+        Name of instrument
 
-    files (str or list of str): if str: name of textfile containing
-      list of files. if list: list of input files. All paths
-      interpreted relative to current directory.
+    files: str or list of str
+        If str: name of textfile containing list of files. If list: list
+        of input files. All paths interpreted relative to current
+        directory.
 
-    Keyword Arguments:
+    Keyword Arguments
     ------------------
-    dataout (str): location of output data directory; defaults to curr dir.
+    dataout: str
+        Location of output data directory; defaults to curr dir.
 
-    recpars (str): passed to --recpars option
+    recpars: str
+         Passed to the picard --recpars option.
 
-    oracdir (str): use custom orac recipe dir; by default
-      starpath/bin/oracdr/src will be used
+    oracdir: str
+       Specify a custom ORAC src tree directory; by default
+       <starpath>/bin/oracdr/src will be used.
 
-    verbose (bool): provide output from Starlink commands in log/stdout
+    verbose: bool
+        provide output from Starlink commands in log/stdout
 
-    debug (bool): provide debug output.
+    debug: bool
+        Provide debug output.
 
-    warn (bool): show Perl warning messages.
+    warn: bool
+        Show Perl warning messages in stdout.
 
-    Returns:
+    Returns
     --------
-    Return value is a named tuple with:
+    Return value is a named tuple with the following attributes:
 
      - runlog: name of output logfile.
      - outputdir: path of output directory
@@ -841,8 +880,6 @@ def picard(recipe, files, dataout=None,
      - logfiles: list of log.* files
      - status: int, return code from suprocess.Popen
      - pid (int): pid of perl parent process.
-
-
 
     """
     picardenv = env.copy()
