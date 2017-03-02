@@ -834,10 +834,14 @@ if __name__ == '__main__':
             os.mkdir(helpdir)
         for com in moduledict:
             rstfile = os.path.join(tempdir, com + '.rst')
+            rstfile2 = os.path.join(tempdir, modulename.lower() + '_' + com + '.rst')
             if os.path.isfile(rstfile):
                 shutil.copy(rstfile, helpdir)
+            elif os.path.isfile(rstfile2):
+                logger.debug('RSTFILE found at {} for {}'.format(rstfile2, com))
+                shutil.copy(rstfile2, os.path.join(helpdir, com + '.rst'))
             else:
-                logger.debug('No rstfile found for {}'.format(com))
+                logger.warning('No rstfile found for {}'.format(com))
         shutil.rmtree(tempdir)
 
 
