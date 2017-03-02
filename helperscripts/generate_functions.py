@@ -776,11 +776,11 @@ if __name__ == '__main__':
 
     # Parse command line options and set defaults.
     args = docopt(__doc__)
-
     buildpath = args['<buildtree>']
     packages = args['<package>']
-    if '<oractree>' in args:
-        oractree = args['<oractree>']
+    if '--orac' in args:
+        oractree = args['--orac']
+
     else:
         oractree = None
 
