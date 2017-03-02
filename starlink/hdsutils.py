@@ -30,6 +30,15 @@ def get_hds_values(comname, adamdir):
         for i in fixuplist:
             results[i] = results[i]['nameptr']
 
+        for key in results:
+            if isinstance(results[key], bytes):
+                results[key] = results[key].decode()
+            else:
+                try:
+                    results[key] = [j.decode() for j in results[key]]
+                except (TypeError, AttributeError):
+                    pass
+
         class starresults( namedtuple(comname, results.keys()) ):
             def __repr__(self):
                 return _hdstrace_print(self)
