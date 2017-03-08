@@ -437,14 +437,14 @@ def starcomm(command, commandname, *args, **kwargs):
 
             # Show stdout as a debug log.
             if stdout:
-                logger.debug(stdout)
+                logger.debug(stdout.decode())
 
             # Get the parameters for the command from $ADAMDIR/commandname.sdf:
             result = hdsutils.get_hds_values(commandname, adamdir)
 
             # If the magic keyword returnStdOut was set:
             if returnStdOut:
-                result = (result, stdout)
+                result = (result, stdout.decode())
 
             return result
 
