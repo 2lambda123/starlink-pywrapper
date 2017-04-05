@@ -24,7 +24,9 @@ to call the starlink commands. Shell escapes do not to be used.
 
 By default it will create a new temporary adam directory in the
 current folder, and use that as the adam directory for the starlink
-processes.
+processes. In order to avoid returning values from a previous run, it
+will delete the <commandname>.sdf files from the ADAM directory after
+reading them back in.
 
 This code was written to allow quick calling of kappa, smurf and cupid
 in the way I usually think about them from python scripts, with
@@ -434,7 +436,16 @@ def starcomm(command, commandname, *args, **kwargs):
                        'stdout and stderr are appended below.\n{}\n{}')
             message = message.format(command, args, stdout.decode(), stderr.decode())
 
+            # Also delete the adam output file, as it may be corrupt
+            # or contain something we don't want propogating.
+            adamfile = os.path.join(adamdir, commandname + '.sdf')
+            if os.path.isfile(adamfile):
+                os.remove(adamfile)
+            else:
+                logger.debug('{} does not exist'.format(adamfile))
+
             raise Exception(message)
+
         else:
 
             # Show stdout as a debug log.
@@ -443,6 +454,24 @@ def starcomm(command, commandname, *args, **kwargs):
 
             # Get the parameters for the command from $ADAMDIR/commandname.sdf:
             result = hdsutils.get_hds_values(commandname, adamdir)
+
+            # Delete the $ADAMDIR/commandname.sdf file if it
+            # exists. This is to prevent issues where an output
+            # parameter is created in one call of a command, but
+            # doesn't get created in another call. As starlink won't
+            # delete the redundant information from the HDS file, the
+            # whole file must be manually deleted. E.g. if you call
+            # 'stats myndf.sdf order=True' you will have a median in
+            # the output values. If you then call 'stats
+            # myotherndf.sdf order=False' you will still get a median
+            # returned, but it will have been returned from the
+            # previous call. Using RESET does not clean out the output
+            # parameters from a previous call.
+            adamfile = os.path.join(adamdir, commandname + '.sdf')
+            if os.path.isfile(adamfile):
+                os.remove(adamfile)
+            else:
+                logger.debug('{} does not exist'.format(adamfile))
 
             # If the magic keyword returnStdOut was set:
             if returnStdOut:
