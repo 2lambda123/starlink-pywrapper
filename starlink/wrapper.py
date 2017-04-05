@@ -414,7 +414,9 @@ def starcomm(command, commandname, *args, **kwargs):
         if xmake:
             logger.info('Creating xwindow named {}'.format(gdname))
             xmakecomm = os.path.join(env['STARLINK_DIR'], 'bin', 'xmake')
-            subprocess.Popen([xmakecomm, gdname], env=env)
+            logger.debug('{} {}'.format(xmakecomm, gdname))
+            p=subprocess.Popen([xmakecomm, gdname], env=env)
+            p.wait()
 
         logger.debug([command] + arg)
         proc = subprocess.Popen([command] + arg, env=env, shell=False,
