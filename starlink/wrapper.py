@@ -49,6 +49,10 @@ import sys
 import time
 import tempfile
 
+try:
+    basestring=basestring
+except NameError:
+    basestring=(str, bytes)
 
 from collections import namedtuple
 
