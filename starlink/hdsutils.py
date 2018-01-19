@@ -5,7 +5,7 @@ import itertools
 
 from starlink import hds
 
-def get_hds_values(comname, adamdir):
+def get_adam_hds_values(comname, adamdir):
 
     """
     Return a namedtuple with all the values
@@ -138,7 +138,7 @@ def _hds_arrays_structures(hdscomp):
 def _hdstrace_print(results):
 
     """
-    Print the results of get_hds_values prettily.
+    Print the results of get_adam_hds_values prettily.
     """
     output = []
     if results:

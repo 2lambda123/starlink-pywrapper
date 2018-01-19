@@ -458,7 +458,7 @@ def starcomm(command, commandname, *args, **kwargs):
                 logger.debug(stdout.decode())
 
             # Get the parameters for the command from $ADAMDIR/commandname.sdf:
-            result = hdsutils.get_hds_values(commandname, adamdir)
+            result = hdsutils.get_adam_hds_values(commandname, adamdir)
 
             # Delete the $ADAMDIR/commandname.sdf file if it
             # exists. This is to prevent issues where an output
