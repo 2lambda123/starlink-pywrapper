@@ -476,6 +476,7 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy', uselongerdescripti
         if param:
             for i in param.values():
 
+
                 # If access is None, assume that it is 'UPDATE' (from SUN/115 docs)
                 readwrite = i.access
                 if not i.access:
@@ -493,7 +494,7 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy', uselongerdescripti
 
 
                 # If NOPROMPT is in the path issue a warning.
-                if 'NOPROMPT' in i.vpath:
+                if i.vpath and 'NOPROMPT' in i.vpath:
                     logger.warning('{}, {} has parameter NOPROMPT: {}'.format(name, i.name, i))
                 # Anything with a position and no default and vpath,
                 # or with vpath starting with PROMPT is a positional
