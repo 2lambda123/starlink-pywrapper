@@ -1,5 +1,5 @@
 # Copyright (C) 2013-2014 Science and Technology Facilities Council.
-# Copyright (C) 2015-2016 East Asian Observatory
+# Copyright (C) 2015-2018 East Asian Observatory
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,18 +15,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Module for carrying out starlink commands within python.
+"""
+starlink.wrapper: Module for running starlink commands from python.
 
-This uses subprocess.Popen to carry out starlink commands.
+This uses subprocess.Popen to run Starlink commands, and requires a
+separate installation of the Starlink Software Suite.
 
-This module allows you to use a standard formatted keyword arguments
-to call the starlink commands. Shell escapes do not to be used.
+It allows you to use a standard formatted keyword arguments
+to call the starlink commands. Shell escapes do not need to be used.
 
-By default it will create a new temporary adam directory in the
-current folder, and use that as the adam directory for the starlink
-processes. In order to avoid returning values from a previous run, it
-will delete the <commandname>.sdf files from the ADAM directory after
-reading them back in.
+By default, when you run commands using this module it will create a
+new temporary ADAM directory in the current folder, and use that as
+the ADAM directory for the starlink processes. In order to avoid
+returning values from a previous run, it will delete the
+<commandname>.sdf files from the ADAM directory after reading them
+back in.
 
 This code was written to allow quick calling of kappa, smurf and cupid
 in the way I usually think about them from python scripts, with
@@ -34,14 +37,12 @@ regular keyword variables.
 
 Its recommended to set STARLINK_DIR in your environment before opening
 python to run this software.
-
 """
 
 import atexit
 import glob
 import logging
 import os
-import re
 import shutil
 import signal
 import subprocess
@@ -500,7 +501,7 @@ class StarError(Exception):
     def __init__(self, command, arg, stderr):
         message = 'Starlink error occured during:\n %s %s\n ' % (commandh, arg)
         message += '\nThere should be an error message printed to stdout '
-        message += '(check above this traceback in ipython)'+stderr
+        message += '(check above this traceback)'+stderr
         Exception.__init__(self, message)
 
 
@@ -539,7 +540,8 @@ def _make_argument_list(*args, **kwargs):
 
 
 JCMTINST = ['ACSIS', 'SCUBA2_850', 'SCUBA2_450', 'SCUBA', 'JCMTDAS', ]
-UKIRTINST = ['CGS4', 'CLASSICCAM', 'GMOS', 'INGRID', 'IRCAM2', 'IRCAM', 'IRIS2', 'ISAAC', 'MICHELLE', 'NACO', 'OCGS4', 'SOFI', 'SPEX', 'START', 'UFTI', 'UFTI_OLD']
+UKIRTINST = ['CGS4', 'CLASSICCAM', 'GMOS', 'INGRID', 'IRCAM2', 'IRCAM',
+             'IRIS2', 'ISAAC', 'MICHELLE', 'NACO', 'OCGS4', 'SOFI', 'SPEX', 'START', 'UFTI', 'UFTI_OLD']
 
 ORACDR_DATA_IN_PATHS = {
     'ACSIS': '/jcmtdata/raw/acsis/spectra',
@@ -626,7 +628,8 @@ def oracdr(instrument, loop='file', dataout=None,
            rawfiles=None, utdate=None, obslist=None,
            headeroverride=None, calib=None,
            verbose=False, debug=False, warn=False):
-    """Run oracdr on a batch of files.
+    """
+    Run oracdr on a batch of files.
 
     Arguments
     ---------
@@ -649,6 +652,10 @@ def oracdr(instrument, loop='file', dataout=None,
 
     recipe str:
        Name of recipe to run. If None, use recipe from headers.
+
+    recpars str:
+       Value to pass as a recipe parameter option -- either a filename
+       or the recpars themselves.
 
     onegroup: Bool
        Force all observations into one processing group.
@@ -700,7 +707,6 @@ def oracdr(instrument, loop='file', dataout=None,
     -----
     This will *not* raise an exception if ORAC-DR ended with an error;
     it is up to the calling code to check the status if required.
-
     """
 
     instrument = instrument.upper()
