@@ -39,13 +39,14 @@ def get_adam_hds_values(comname, adamdir):
             #with 'ascii', as I believe HDS only has ascii?
 
             if (isinstance(value, bytes) and not isinstance(value, str)):
-                results[key] = value.decode(encoding='ascii')
+                results[key] = value.decode(encoding='ascii', errors='replace')
             elif (isinstance(value, bytes) and isinstance(value, str)):
                 pass
             else:
                 try:
-                    results[key] = [j.decode(encoding='ascii') if isinstance(j, bytes)
-                                    and not isinstance(j, str) else j for j in value]
+                    results[key] = [j.decode(encoding='ascii', errors='replace')
+                                    if isinstance(j, bytes) and not isinstance(j, str)
+                                    else j for j in value]
                 except (TypeError, AttributeError):
                     pass
 
