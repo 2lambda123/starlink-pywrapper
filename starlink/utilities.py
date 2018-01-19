@@ -28,34 +28,34 @@ try:
 except ImportError:
     imap = map
 
-from astropy.io import fits
-from starlink import ndfpack
 
-logging.basicConfig(level=logging.INFO)
+from starlink import hds
+
 logger = logging.getLogger(__name__)
 
 
 
-def get_fitshdr(datafile, form='sdf'):
+def get_ndf_fitshdr(datafile):
     """
     Return a astropy.io.fits header object.
 
-    kwarg:
-    form (str): can be 'sdf' or 'fits'
+    If an NDF is provided, it will look up the .more.FITS component of the NDF file.
+    It will raise an error if that does not exist.
 
+
+    Requires a astropy.io.fits to be installed.
     """
 
+    from astropy.io import fits
 
-    if form == 'sdf':
-        ndf = ndfpack.Ndf(datafile)
-        fitshead = ndf.head['FITS']
-        hdr = fits.Header.fromstring('\n'.join(fitshead), sep='\n')
-
-    elif form == 'fits':
-        hdr = fits.getheader(datafile)
-
-    else:
-        raise Exception('Unknown file format %s: form must be "sdf" or "fits"' %  form)
+    hdsobj = hds.open(datafile, 'READ')
+    fitscomp = hdsobj.find('MORE').find('FITS')
+    fitsheader = fitscomp.get()
+    fitsheader = '\n'.join([i.decode()
+                            if isinstance(i, bytes) and not isinstance(i, str)
+                            else i
+                            for i in a]))
+    hdr = fits.Header.fromstring(fitsheader, sep='\n')
 
     return hdr
 
