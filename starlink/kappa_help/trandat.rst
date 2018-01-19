@@ -239,6 +239,8 @@ Notes
 ~~~~~
 
 
++ Bad data values may be represented by the string "BAD" (case
+insensitive) within the input text file.
 + All non-complex numeric data types can be handled. However, byte,
 unsigned byte, word and unsigned word require data conversion, and
 therefore involve additional processing. to a vector element (for n-d

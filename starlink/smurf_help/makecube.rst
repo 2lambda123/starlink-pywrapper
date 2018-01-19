@@ -505,7 +505,16 @@ If a true value is supplied, then an error is reported and the
 application terminates if a significant difference is found between
 the detector positions array (RECEPPOS) and positions implied by the
 FPLANEX/Y arrays. If a false value is supplied, a warning is issued
-but the application proceeds. See also parameter USEDETPOS. [FALSE]
+but the application proceeds. See also parameters POSERRMAX and
+USEDETPOS. [FALSE]
+
+
+
+POSERRMAX = _REAL (Read)
+````````````````````````
+Defines the maximum insignificant discrepancy between the detector
+positions array (RECEPPOS) and positions implied by the FPLANEX/Y
+arrays, in units of arc-seconds. See parameter POSERRFATAL. [3.0]
 
 
 
@@ -822,10 +831,10 @@ SMURF: TIMESORT
 
 Copyright
 ~~~~~~~~~
-Copyright (C) 2007-2014 Science and Technology Facilities Council.
-Copyright (C) 2006-2007 Particle Physics and Astronomy Research
-Council. Copyright (C) 2006-2008,2013 University of British Columbia.
-All Rights Reserved.
+Copyright (C) 2017 East Asian Observatory. Copyright (C) 2007-2014
+Science and Technology Facilities Council. Copyright (C) 2006-2007
+Particle Physics and Astronomy Research Council. Copyright (C)
+2006-2008,2013 University of British Columbia. All Rights Reserved.
 
 
 Licence

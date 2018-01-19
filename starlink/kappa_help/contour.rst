@@ -216,7 +216,7 @@ value specifies the distance in millimetres along the second pixel
 axis from the centre of the bottom-left pixel to the baseline of the
 label. If a null (!) value is given, no label is produced. The
 appearance of the label can be set by using the STYLE parameter (for
-instance "Size(strings)=2"). [current value]
+instance "Size(strings)=2"). [!]
 
 
 

@@ -205,13 +205,16 @@ displaying the image. [TRUE]
 
 
 
-KEYPOS = _REAL (Read)
-`````````````````````
-A value giving the gap between the right-hand edge of the display and
-the left-hand edge of the key, given as a fraction of the width of the
-current picture. If a key is produced, then the right-hand margin
-specified by Parameter MARGIN is ignored, and the value supplied for
-KEYPOS is used instead. [current value]
+KEYPOS( 2 ) = _REAL (Read)
+``````````````````````````
+The first element gives the gap between the right-hand edge of the
+display and the left-hand edge of the key, as a fraction of the width
+of the current picture. If a key is produced, then the right-hand
+margin specified by Parameter MARGIN is ignored, and the value
+supplied for KEYPOS is used instead. The second element gives the
+vertical position of the key as a fractional value in the range zero
+to one: zero puts the key as low as possible, one puts it as high as
+possible. [current value]
 
 
 
@@ -359,6 +362,18 @@ colour index following the palette). The output NDF is intended to be
 used as the input data in conjunction with SCALE=FALSE. If a null
 value (!) is supplied, no output NDF will be created. This parameter
 is not accessed when SCALE=FALSE. [!]
+
+
+
+PENRANGE( 2 ) = _REAL (Read)
+````````````````````````````
+The range of colour indices ("pens") to use. The supplied values are
+fractional values where zero corresponds to the lowest available
+colour index and 1.0 corresponds to the highest available colour
+index. The default value of [0.0,1.0] thus causes the full range of
+colour indicies to be used. Note, if parameter LUT is null (!) or
+parameter SCALE is FALSE then this parameter is ignored and the fill
+range of pens is used. [0.0,1.0]
 
 
 

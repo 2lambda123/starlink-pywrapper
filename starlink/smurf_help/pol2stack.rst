@@ -123,7 +123,7 @@ JY = _LOGICAL (Read)
 ````````````````````
 If TRUE, the output catalogue, and the output Q, U, PI and I maps will
 be in units of Jy/beam. Otherwise they will be in units of pW (in this
-case, the I values will be scaled to take account of the different
+case, the I values will be scaled to take account of any difference in
 FCFs for POL-2 and non-POL-2 observations). [True]
 
 

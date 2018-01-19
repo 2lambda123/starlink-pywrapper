@@ -147,6 +147,84 @@ def astbox(frame, form, point1, point2, unc, **kwargs):
     return wrapper.starcomm("$ATOOLS_DIR/astbox", "astbox", frame, form, point1, point2, unc, **kwargs)
 
 
+def astchebydomain(this, **kwargs):
+    """
+    Returns the bounding box of the domain of a ChebyMap.
+
+    Runs the command: $ATOOLS_DIR/astchebydomain .
+
+    Arguments
+    ---------
+    this : str
+        The input ChebyMap
+
+
+    Keyword Arguments
+    -----------------
+    forward : bool
+        Use the forward transformation? [TRUE]
+
+    fmt : str
+        Format for output text file [AST]
+
+
+    Returns
+    -------
+    lbnd : List[float]
+
+    ubnd : List[float]
+
+
+    """
+    return wrapper.starcomm("$ATOOLS_DIR/astchebydomain", "astchebydomain", this, **kwargs)
+
+
+def astchebymap(*args, **kwargs):
+    """
+    Create a ChebyMap.
+
+    Runs the command: $ATOOLS_DIR/astchebymap .
+
+    Keyword Arguments
+    -----------------
+    nin : int
+        Number of input coordinates [1]
+
+    nout : int
+        Number of output coordinates [1]
+
+    coeff_f : str
+        Group of coefficients for the forward transformation
+
+    coeff_i : str
+        Group of coefficients for the inverse transformation
+
+    lbndf : float
+        Lower bounds of input box
+
+    ubndf : float
+        Upper bounds of input box
+
+    lbndi : float
+        Lower bounds of output box
+
+    ubndi : float
+        Upper bounds of output box
+
+    options : str
+        Options for the ChebyMap [!]
+
+    result : str
+        Name of file in which to store the ChebyMap
+
+    fmt : str
+        Format for output text file ["AST"]
+
+
+    """
+    return wrapper.starcomm("$ATOOLS_DIR/astchebymap", "astchebymap", *args, **kwargs)
+
+
 def astcircle(frame, form, centre, point, unc, **kwargs):
     """
     Create a Circle.
@@ -431,6 +509,11 @@ def astdistance(this, point1, point2, **kwargs):
     -----------------
     fmt : str
         Format for output text file ["AST"]
+
+
+    Returns
+    -------
+    distance : float
 
 
     """

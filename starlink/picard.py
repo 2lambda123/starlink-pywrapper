@@ -44,6 +44,11 @@ def crop_scuba2_images(*args, **kwargs):
     return wrapper.picard('CROP_SCUBA2_IMAGES', *args, **kwargs)
 
 
+def estimate_image_alignment(*args, **kwargs):
+    """Run PICARD'S ESTIMATE_IMAGE_ALIGNMENT recipe."""
+    return wrapper.picard('ESTIMATE_IMAGE_ALIGNMENT', *args, **kwargs)
+
+
 def jsa_catalogue(*args, **kwargs):
     """Run PICARD'S JSA_CATALOGUE recipe."""
     return wrapper.picard('JSA_CATALOGUE', *args, **kwargs)

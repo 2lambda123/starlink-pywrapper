@@ -49,6 +49,12 @@ output object cannot be written using the requested format. ["AST"]
 
 
 
+DISTANCE = _DOUBLE (Write)
+``````````````````````````
+The calculated distance.
+
+
+
 THIS = LITERAL (Read)
 `````````````````````
 An NDF, FITS file or text file holding the Frame. If an NDF is

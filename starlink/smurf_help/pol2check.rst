@@ -26,6 +26,8 @@ The checks are based on NDF meta-data and FITS headers. It is possible
 that an NDF could pass these checks and yet fail to open in other
 smurf task if any of the additional meta-data required by those tasks
 has been corrupted or is otherwise inappropriate.
+An error is reported if POL2 data from more than one waveband (450 or
+850) is present in the list of supplied data files.
 
 
 ADAM parameters
@@ -177,7 +179,7 @@ Notes
 
 Copyright
 ~~~~~~~~~
-Copyright (C) 2016 East Asian Observatory All Rights Reserved.
+Copyright (C) 2016-2017 East Asian Observatory All Rights Reserved.
 
 
 Licence

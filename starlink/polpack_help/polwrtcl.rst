@@ -49,6 +49,9 @@ The units associated with the Z axis in the current Frame of the
 catalogues WCS FrameSet. Not written if the catalogue does not have a
 Z axis. zcunit_ : The units associated with the Z column in the
 catalogue. Not written if the catalogue does not have a Z column.
+refrot_ : The angle in degrees, from the Declination axis (FK5 J2000)
+through the RA axis, to the referene direction. Assumed to be constant
+across the map.
 
 
 Usage

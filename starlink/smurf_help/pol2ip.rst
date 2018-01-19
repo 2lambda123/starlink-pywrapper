@@ -103,6 +103,8 @@ A 2D NDF holding a map of total intensity (in pW) for the object
 covered by the observations in OBSLIST. It is assumed that the object
 is centred at the reference point in the map. The supplied map is
 resampled to to give it the pixel size specified by parameter PIXSIZE.
+If a null value(!) is supplied, the total intensity is determined from
+the POL2 data itself.
 
 
 

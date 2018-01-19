@@ -63,21 +63,27 @@ The MAKEMAP configuration parameter values to use. Additions will be
 made as follows:
 
 
-+ First iteration: numiter=1 noi.export=1 exportNDF=(lut,ext)
++ First iteration:
++ -- numiter=1 noi.export=1 exportNDF=(lut,ext,res,qua)
 noexportsetbad=1 exportclean=1 ast.zero_notlast = 0 flt.zero_notlast =
 0 com.zero_notlast = 0 itermap=0 shortmap=0 bolomap=0 flagmap=<undef>
 sampcube=0 diag.append=0
-+ Subsequent iterations: numiter=1 noi.import=1 doclean=0
++ --
++ Subsequent iterations:
++ -- numiter=1 noi.import=1 exportNDF=(res,qua) doclean=0
 importsky=ref importlut=1 ext.import=1 ast.zero_notlast = 0
 flt.zero_notlast = 0 com.zero_notlast = 0 flt.notfirst = 0
 pln.notfirst = 0 smo.notfirst = 0 itermap=0 shortmap=0 bolomap=0
 flagmap=<undef> sampcube=0 diag.append=1 downsampscale=0
 downsampfreq=0 fakemap=<undef>
-+ Last iteration: numiter=1 noi.import=1 doclean=0 importsky=ref
-  importlut=1 ext.import=1 ast.zero_notlast = 1 flt.zero_notlast = 1
-  com.zero_notlast = 1 flt.notfirst = 0 pln.notfirst = 0 smo.notfirst =
-  0 itermap=0 shortmap=0 bolomap=0 flagmap=<undef> sampcube=0
-  diag.append=1 downsampscale=0 downsampfreq=0 fakemap=<undef>
++ --
++ Last iteration:
++ -- numiter=1 noi.import=1 doclean=0 importsky=ref importlut=1
+ext.import=1 ast.zero_notlast = 1 flt.zero_notlast = 1
+com.zero_notlast = 1 flt.notfirst = 0 pln.notfirst = 0 smo.notfirst =
+0 itermap=0 shortmap=0 bolomap=0 flagmap=<undef> sampcube=0
+diag.append=1 downsampscale=0 downsampfreq=0 fakemap=<undef>
++ --
 
 
 

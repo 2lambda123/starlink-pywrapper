@@ -17,8 +17,8 @@ inverse to the MAKEMAP application.
 The output time series bolometer samples are created by interpolating
 the supplied input sky image at the position of the reference time
 series sample centre. Various interpolation methods can be used (see
-parameter INTERP). Gaussian noise may also be added (see parameter
-SIGMA).
+parameter INTERP). Gaussian noise and pointing errors may also be
+added (see parameters SIGMA and PERROR).
 The output time series cubes inherit all meta-data from the
 corresponding input reference time series. The only thing modified is
 the values in the NDF "Data" array.
@@ -135,7 +135,9 @@ by OUT, in place of the normal fourth harmonic signal. [4]
 IN = NDF (Read)
 ```````````````
 The input 2D image of the sky. If NDFs are supplied for the QIN and
-UIN parameters, then IN should hold I values.
+UIN parameters, then IN should hold I values. For POL2 data, the input
+I, Q and U pixel values are assumed to incorporate the effect of the
+1.35 loss caused by placing POL2 in the beam.
 
 
 
@@ -215,11 +217,16 @@ It can be any of the following (case-insensitive):
 
 + "JK": The Johnstone-Kennedy model based on analysis of skydip data.
 + "PL1": A simpler model based on analysis of planetary data.
++ "PL2": A simpler model based on analysis of planetary data.
++ "PL3": A simpler model based on analysis of planetary data.
 + "USER": IP is based on the values supplied for parameters INSTQ and
 INSTU.
 + "NONE": No IP is added.
 
-Supplying a null value (!) value is equivalent to "NONE". ["PL1"]
+Note, if the PL1 or PL2 model is used, suitable values also need to be
+supplied for parameter PLDATA (the default values for PLDATA are
+appropriate for PL3).
+Supplying a null value (!) value is equivalent to "NONE". ["PL3"]
 
 
 
@@ -243,7 +250,9 @@ messages), QUIET (minimal messages), NORMAL, VERBOSE, DEBUG or ALL.
 OUT = NDF (Write)
 `````````````````
 A group of output NDFs into which the simulated time series data will
-be written. These will hold _DOUBLE data vlues.
+be written. These will hold _DOUBLE data values. For POL2 data, the
+values should be considered to incorporate the 1.35 loss caused by
+POL2 .
 
 
 
@@ -310,17 +319,21 @@ AMP16, in degrees. [0.0]
 
 
 
-PL1DATA() = DOUBLE (Read)
-`````````````````````````
-The numerical parameters of the PL1 IP model for POL2 data. This
-parameter is only used if parameter IPFORM is set to "PL1". This
-should be a vector of three values, being the coefficients of a
-quadratic polynomial that gives the fractional polarisation produced
-by instrumental polarisation, as a function of elevation (in radians):
+PLDATA() = DOUBLE (Read)
+````````````````````````
+The numerical parameters of the PL1, PL2 or PL3 IP model for POL2
+data. This parameter is only used if parameter IPFORM is set to "PL1",
+"PL2" or "PL3". This should be a vector of three (PL1) or four (PL2
+and PL3) values, being the coefficients of a quadratic polynomial that
+gives the fractional polarisation produced by instrumental
+polarisation, as a function of elevation (in radians):
 fractional IP = A + B*elev + C*elev*elev
-where the vector (A,B,C) is given by parameter PL1DATA. The PL1 model
-assumes that the IP is parallel to the elevation axis at all
-elevations. [ 3.288E-3, 2.178E-2, -1.156E-2 ]
+where the vector (A,B,C) are given by the first three elements of
+parameter PLDATA. The PL1 model assumes that the IP is parallel to the
+elevation axis at all elevations. The PL2 and PL3 require a fourth
+value to indicate the offset between the IP and the elevation axis.
+The default values are appropriate for PL3.
+[2.624E-3,4.216E-2,-2.410E-2,-3.400E-2]
 
 
 
@@ -348,13 +361,22 @@ interpolation. [!]
 
 
 
+PERROR = _DOUBLE (Read)
+```````````````````````
+The standard deviation of the pointing errors to include in the output
+data, in arc-seconds. [0.0]
+
+
+
 QIN = NDF (Read)
 ````````````````
 The input 2D image of the sky Q values, with respect to the second
 pixel axis (i.e. the pixel Y axis). Positive polarisation angles are
 in the same sense as rotation from the pixel X axis to the pixel Y
 axis. If QIN and UIN are both supplied, then the time series specified
-by the REF parameter should contain flat-fielded POL2 data. [!]
+by the REF parameter should contain flat-fielded POL2 data. These
+values are assumed to incorporate the effect of the 1.35 loss caused
+by placing POL2 in the beam. [!]
 
 
 
@@ -380,7 +402,9 @@ The input 2D image of the sky U values, with respect to the second
 pixel axis (i.e. the pixel Y axis). Positive polarisation angles are
 in the same sense as rotation from the pixel X axis to the pixel Y
 axis. If QIN and UIN are both supplied, then the time series specified
-by the REF parameter should contain flat-fielded POL2 data. [!]
+by the REF parameter should contain flat-fielded POL2 data. These
+values are assumed to incorporate the effect of the 1.35 loss caused
+by placing POL2 in the beam. [!]
 
 
 
@@ -403,7 +427,7 @@ SMURF: MAKEMAP
 Copyright
 ~~~~~~~~~
 Copyright (C) 2011 Science and Technology Facilities Council.
-Copyright (C) 2015,2016 East Asian Observatory. All Rights Reserved.
+Copyright (C) 2015-2017 East Asian Observatory. All Rights Reserved.
 
 
 Licence

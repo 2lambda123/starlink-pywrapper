@@ -32,6 +32,25 @@ ADAM parameters
 
 
 
+ABORTEDAT = _INTEGER (Write)
+````````````````````````````
+Set to a non-zero value on exit if the iterative process was aborted
+because of the ABORTSOON parameter being set TRUE. The specific non-
+zero value returned is the number of iterations that had been
+completed when the iterative process was aborted. Always set to zero
+if ABORTSOON is FALSE.
+
+
+
+ABORTSOON = _LOGICAL (Read)
+```````````````````````````
+If TRUE, then the iterative process will exit as soon as it becomes
+likely that the convergence criterion (specified by configuration
+parameter MAPTOL) will not be reached within the number of iterations
+allowed by configuration parameter NUMITER. [FALSE]
+
+
+
 ALIGNSYS = _LOGICAL (Read)
 ``````````````````````````
 If TRUE, then the spatial positions of the input data are aligned in
@@ -698,8 +717,8 @@ Copyright
 ~~~~~~~~~
 Copyright (C) 2005-2007 Particle Physics and Astronomy Research
 Council. Copyright (C) 2005-2010,2013 University of British Columbia.
-Copyright (C) 2007-2012 Science and Technology Facilities Council. All
-Rights Reserved.
+Copyright (C) 2007-2012 Science and Technology Facilities Council.
+Copyright (C) 2017 East Asian Observatory. All Rights Reserved.
 
 
 Licence

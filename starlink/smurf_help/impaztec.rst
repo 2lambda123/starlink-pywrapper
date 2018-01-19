@@ -64,7 +64,8 @@ Copyright
 Copyright (C) 2007-2008,2011 Science and Technology Facilities
 Council. Copyright (C) 2005-2008 Univeristy of British Columbia.
 Copyright (C) 2005-2007 Particle Physics and Astronomy Research
-Council. All Rights Reserved.
+Council. Copyright (C) 2017 East Asian Observatory. All Rights
+Reserved.
 
 
 Licence

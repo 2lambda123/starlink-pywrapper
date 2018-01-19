@@ -1752,7 +1752,7 @@ def contour(ndf, **kwargs):
         Plotting style for the key [current value]
 
     labpos : List[float]
-        Position for label in Good and Bounds modes [current value]
+        Position for label in Good and Bounds modes [!]
 
     lastcnt : float
         Give the height of the last contour
@@ -2205,7 +2205,7 @@ def display(in_, **kwargs):
     key : bool
         Do you want a key to the colour table? [TRUE]
 
-    keypos : float
+    keypos : List[float]
         Horizontal position of key [current value]
 
     keystyle : str
@@ -2225,6 +2225,9 @@ def display(in_, **kwargs):
 
     numbin : int
         Number of bins to compute percentiles [2048]
+
+    penrange : List[float]
+        Range of pens to use [0.0,1.0]
 
     percentiles : List[float]
         Percentiles for scaling [10,90]

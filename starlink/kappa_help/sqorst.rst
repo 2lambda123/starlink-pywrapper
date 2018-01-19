@@ -154,13 +154,15 @@ The PIXSCALE parameter is only used if Parameter MODE is set to
 required new pixel scales. In this context, a pixel scale for a WCS
 axis is the increment in WCS axis value caused by a movement of one
 pixel along the WCS axis, and are measured at the first pixel in the
-array. The suggested default value are the current pixel scales. If no
-value has been supplied for Parameter AXIS, the number of values
-supplied for PIXSCALE must be the same as the number of WCS axes in
-the NDF. If a non-null value has been supplied for Parameter AXIS,
-then only a single value should be supplied for PIXSCALE and that
-value will be used as the new pixel scale on the WCS axis indicated by
-Parameter AXIS.
+array. Pixel scales for celestial axes should be given in arcseconds.
+An asterisk, "*", can be used instead of a numerical value to indicate
+that an axis should retain its current scale. The suggested default
+values are the current pixel scales. If no value has been supplied for
+Parameter AXIS, the number of values supplied for PIXSCALE must be the
+same as the number of WCS axes in the NDF. If a non-null value has
+been supplied for Parameter AXIS, then only a single value should be
+supplied for PIXSCALE and that value will be used as the new pixel
+scale on the WCS axis indicated by Parameter AXIS.
 
 
 

@@ -921,7 +921,34 @@ def polversion(*args, **kwargs):
     return wrapper.starcomm("$POLPACK_DIR/polversion", "polversion", *args, **kwargs)
 
 
-def polwrtcl(in_, out, **kwargs):
+def polwcscopy(in_, out, ref, **kwargs):
+    """
+    Copies WCS from one catalogue to another.
+
+    Runs the command: $POLPACK_DIR/polwcscopy .
+
+    Arguments
+    ---------
+    `in_` : str
+        Input catalogue
+
+    out : str
+        Output catalogue
+
+    ref : str
+        Reference catalogue
+
+
+    Notes
+    -----
+    See http://www.starlink.ac.uk/cgi-bin/htxserver/sun223.htx/sun223.html?xref_POLWCSCOPY
+    for full documentation of this command in the latest Starlink release
+
+    """
+    return wrapper.starcomm("$POLPACK_DIR/polwcscopy", "polwcscopy", in_, out, ref, **kwargs)
+
+
+def polwrtcl(in_, out, system, **kwargs):
     """
     Creates a text file holding the contents of a specified catalogue in
 
@@ -935,6 +962,9 @@ def polwrtcl(in_, out, **kwargs):
     out : str
         Output text file
 
+    system : str
+        Required WCS system
+
 
     Notes
     -----
@@ -942,7 +972,7 @@ def polwrtcl(in_, out, **kwargs):
     for full documentation of this command in the latest Starlink release
 
     """
-    return wrapper.starcomm("$POLPACK_DIR/polwrtcl", "polwrtcl", in_, out, **kwargs)
+    return wrapper.starcomm("$POLPACK_DIR/polwrtcl", "polwrtcl", in_, out, system, **kwargs)
 
 
 def polzconv(cat, **kwargs):

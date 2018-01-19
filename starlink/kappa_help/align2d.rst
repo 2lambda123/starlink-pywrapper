@@ -87,7 +87,7 @@ to see if the pixel values in its locality are well correlated with
 the corresponding locality in the reference image. The input pixel is
 excluded from the fitting process if the local correlation is below
 CORLIMIT. The supplied value should be between zero and 1.0. The size
-of the locality used around each input pixel is given by parameter
+of the locality used around each input pixel is given by Parameter
 BOX.
 In addition, if a value is supplied for CORLIMIT, the input and
 reference pixel values that pass the above check are scaled so that
@@ -263,9 +263,11 @@ increasing execution time. [0.05]
 
 
 
-TR( 6 ) = _DOUBLE (Write)
-`````````````````````````
+TR( 6 or 8 ) = _DOUBLE (Write)
+``````````````````````````````
 An output parameter to which are written the coefficients of the fit.
+If FITVALS is TRUE, then this will include the scale and offset
+(written to the seventh and eighth entries).
 
 
 

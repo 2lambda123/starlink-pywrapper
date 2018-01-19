@@ -19,6 +19,8 @@ TCS_AZ_AC1/2 into the tracking system and then finding the arc-
 distance from this converted position to the corresponding
 TCS_TR_AC1/2 position. This is done for every time slice, and the
 statistics of the resulting separations are displayed, in arc-seconds.
+A warning message is reported if any separations larger than 3 arc-
+seconds are found.
 
 
 ADAM parameters
@@ -34,8 +36,8 @@ The time series to be checked.
 
 Copyright
 ~~~~~~~~~
-Copyright (C) 2013 Science and Technology Facilities Council. All
-Rights Reserved.
+Copyright (C) 2017 East Asian Observatory. Copyright (C) 2013 Science
+and Technology Facilities Council. All Rights Reserved.
 
 
 Licence
