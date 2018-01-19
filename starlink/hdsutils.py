@@ -1,6 +1,7 @@
 import os
 from collections import namedtuple
 from keyword import iskeyword
+import itertools
 
 from starlink import hds
 
@@ -17,7 +18,7 @@ def get_hds_values(comname, adamdir):
         # Iterate through it to get all the results.
         results = _hds_iterate_components(hdsobj)
 
-        # Remove the 'ADAM_DYNDEF' component as it never exits?
+        # Remove the 'ADAM_DYNDEF' component as it never exists?
         if 'adam_dyndef' in  results:
             results.pop('adam_dyndef')
 
@@ -84,26 +85,53 @@ def _hds_value_get(hdscomp):
     return name, value, type_
 
 
-
 def _hds_iterate_components(hdscomp):
+    """
+    Iterate through HDS structure.
 
-    """Iterate through HDS structure.
-
-    Return nested dictionaries representing the object.
-
+    Return nested dictionaries/arrays representing the object.
     """
     results_dict={}
-    for i in range(hdscomp.ncomp):
-        subcomp = hdscomp.index(i)
-        if subcomp.struc:
-            name = subcomp.name.lower()
-            if iskeyword(name):
-                name += '_'
-            results_dict[name] = _hds_iterate_components(subcomp)
-        else:
-            name, value, type_ = _hds_value_get(subcomp)
-            results_dict[name] = value
+    name = _hds_get_clean_name(hdscomp.name)
+
+    # If its an unordered set of components:
+    if hdscomp.struc and not hdscomp.shape:
+        for i in range(hdscomp.ncomp):
+            subcomp = hdscomp.index(i)
+            if subcomp.struc and not subcomp.shape:
+                name = _hds_get_clean_name(subcomp.name)
+                results_dict[name] = _hds_iterate_components(subcomp)
+            elif not(subcomp.struc):
+                name, value, type_ = _hds_value_get(subcomp)
+                results_dict[name] = value
+            elif subcomp.struc and subcomp.shape:
+                name = _hds_get_clean_name(subcomp.name)
+                results_dict[name] = _hds_arrays_structures(subcomp)
+    # If its a structured array of hds components.
+    elif hdscomp.struc and hdscomp.shape:
+        results_dict[name] = _hds_arrays_structures(hdscomp)
+    # If its a primitive.
+    elif hdscomp.struc is None:
+        name, value, type_ = _hds_value_get(hdscomp)
+        results_dict = {name: value}
+
     return results_dict
+
+
+def _hds_get_clean_name(name):
+    name = name.lower()
+    if iskeyword(name):
+        name += '_'
+    return name
+
+
+def _hds_arrays_structures(hdscomp):
+    subcomps = []
+    for idx in itertools.product(*[range(s) for s in hdscomp.shape]):
+        cellloc = hdscomp.cell(idx)
+        subcomps.append(_old_hds_iterate_components(cellloc))
+    subcomps = np.asarray(subcomps).reshape(hdscomp.shape)
+    return subcomps
 
 
 def _hdstrace_print(results):
