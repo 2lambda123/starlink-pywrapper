@@ -44,7 +44,8 @@ def get_hds_values(comname, adamdir):
                 pass
             else:
                 try:
-                    results[key] = [j.decode(encoding='ascii') if isinstance(j, bytes) and not isinstance(j, str) else j for j in value]
+                    results[key] = [j.decode(encoding='ascii') if isinstance(j, bytes)
+                                    and not isinstance(j, str) else j for j in value]
                 except (TypeError, AttributeError):
                     pass
 
