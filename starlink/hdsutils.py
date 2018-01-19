@@ -31,11 +31,19 @@ def get_hds_values(comname, adamdir):
             results[i] = results[i]['nameptr']
 
         for key in results:
-            if isinstance(results[key], bytes):
-                results[key] = results[key].decode()
+            value = results[key]
+
+            #This code is to ensure that on python3 we call 'decode'
+            #so as to return byte strings. Currently this is calling
+            #with 'ascii', as I believe HDS only has ascii?
+
+            if (isinstance(value, bytes) and not isinstance(value, str)):
+                results[key] = value.decode(encoding='ascii')
+            elif (isinstance(value, bytes) and isinstance(value, str)):
+                pass
             else:
                 try:
-                    results[key] = [j.decode() for j in results[key]]
+                    results[key] = [j.decode(encoding='ascii') if isinstance(j, bytes) and not isinstance(j, str) else j for j in value]
                 except (TypeError, AttributeError):
                     pass
 
