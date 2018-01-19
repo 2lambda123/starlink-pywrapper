@@ -1,10 +1,11 @@
-Starlink-Wrapper's Documentation
-=================================
+Starlink-Wrapper
+================
 
 .. include:: ../README.rst
   :start-after: inclusion-marker-do-not-remove
 
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2
