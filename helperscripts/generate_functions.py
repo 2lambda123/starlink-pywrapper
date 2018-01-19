@@ -39,6 +39,10 @@ Any number of modules can be specified.
 
 It will look under <buildtree>/applications/modulename.lower() for:
 <modulename>.hlp and <commandname>.ifl files.
+
+It uses prohtml, so requires a STARLINK_DIR environ to be set giving
+the location of a built starlink.
+
 """
 
 import glob
@@ -488,11 +492,14 @@ def make_docstrings(moduledict, sunname=None, kstyle='numpy', uselongerdescripti
                     i = parinfo(*temp)
 
 
-                # Anything with a position and no default and vapth,
+                # If NOPROMPT is in the path issue a warning.
+                if 'NOPROMPT' in i.vpath:
+                    logger.warning('{}, {} has parameter NOPROMPT: {}'.format(name, i.name, i))
+                # Anything with a position and no default and vpath,
                 # or with vpath starting with PROMPT is a positional
                 # argument.
                 if i.position and (
-                        (i.vpath is None and i.default is None) or
+                        (i.vpath is None and (i.default is None or i.default=='dyn.')) or
                         (i.vpath is not None and i.vpath.strip().startswith('PROMPT'))):
                     positional.append(i)
 
