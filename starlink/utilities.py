@@ -54,7 +54,7 @@ def get_ndf_fitshdr(datafile):
     fitsheader = '\n'.join([i.decode()
                             if isinstance(i, bytes) and not isinstance(i, str)
                             else i
-                            for i in a])
+                            for i in fitsheader])
     hdr = fits.Header.fromstring(fitsheader, sep='\n')
 
     return hdr
