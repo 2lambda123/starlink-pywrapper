@@ -806,6 +806,19 @@ if __name__ == '__main__':
     logger.info('Building python modules {}.'.format(', '.join(packages)))
 
 
+    # Get the starlink version:
+    starversionfile = os.path.join(buildpath, 'starlink.version')
+    if os.path.isfile(starversionfile):
+        with open(starversionfile, 'r') as f:
+            starv = f.readlines()
+        starv = [i.strip() for i in starv]
+        name = starv[0]
+        githash = starv[1]
+        time = ' '.join(starv[2].split(' ')[0:2])
+        moduleline += "\n\nStarlink version: {}\n{} ({})".format(name, githash, time)
+    else:
+        moduleline += "\n\nGenerated from an unknown version of Starlink."
+
     # Create a function for each package
     for modulename in packages:
 
