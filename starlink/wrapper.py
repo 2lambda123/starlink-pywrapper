@@ -578,9 +578,9 @@ def oracdr_envsetup(instrument, utdate=None, ORAC_DIR=None,
         elif instrument.upper() in ORACDR_DATA_IN_PATHS:
             ORAC_DATA_IN = os.path.join(ORACDR_DATA_IN_PATHS[instrument.upper()], utdate)
         else:
-            if instrument in jcmtinst:
+            if instrument in JCMTINST:
                 ORAC_DATA_IN = os.path.join('/jcmtdata/raw/', instrument.lower(), utdate)
-            elif instrument in ukirtinst:
+            elif instrument in UKIRTINST:
                 ORAC_DATA_IN = os.path.join('/ukirtdata/raw/', instrument.lower(), utdate)
             else:
                 logger.warning('Setting ORAC_DATA_IN to "/"')
