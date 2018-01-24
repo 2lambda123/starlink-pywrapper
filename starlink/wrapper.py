@@ -744,6 +744,12 @@ def oracdr(instrument, loop='file', dataout=None,
             logger.warning('Requested DATA_IN directory {} does not exist'.format(
                 datain))
 
+
+    # If ORAC_DATA_IN is not set and using a provided set of files, assume it is the current directory, but warn the user about this.
+    if not datain and not loop=="list":
+        datain = os.path.curdir
+        logger.info('Keyword Argument datain was not given, so defaulting to %s', datain)
+
     # Set up environmental variables to run ORAC succesfully.
     oracenv = oracdr_envsetup(instrument, utdate=utdate, ORAC_DIR=None,
                     ORAC_DATA_IN=datain, ORAC_DATA_OUT=outputdir,
@@ -752,6 +758,8 @@ def oracdr(instrument, loop='file', dataout=None,
 
     # If using loop=file get rawfiles into correct format.
     if loop=="file":
+
+
         if isinstance(rawfiles, basestring):
             if not os.path.isfile(rawfiles):
                 logger.error('Could not find raw file list {}!'.format(rawfiles))
