@@ -788,12 +788,14 @@ def oracdr(instrument, loop='file', dataout=None,
                     raise Exception('No valid input raw files were found!')
                 else:
                     # Write output files into a temp file.
-                    fh, rawobsfilename = tempfile.mkstemp(prefix='tmpORACInputList.lis', text=True)
+                    fh = tempfile.NamedTemporaryFile(mode='w', prefix='tmpORACInputList.lis', delete=False)
+                    rawobsfilename = fh.name
                     fh.writelines('\n'.join(outputfiles))
                     fh.close()
+                    logger.debug('Using temporary list of raw observations in %s.', rawobsfilename)
             except:
                 logger.error('Could turn provided list of raw observation files into correct format')
-                raise Exception('Could turn provided list of raw observation files into correct format')
+                raise
 
 
     # Orac dr perl command
