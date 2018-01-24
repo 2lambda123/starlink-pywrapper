@@ -7,7 +7,7 @@ def readme():
 setup(name='starlink-pywrapper',
       version='0.2',
       description='Provides a wrapper around the Starlink software suite commands.',
-      long_description=readme()
+      long_description=readme(),
       classifiers=[
         'Topic :: Scientific/Engineering :: Astronomy',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
