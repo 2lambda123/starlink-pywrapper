@@ -296,7 +296,7 @@ example can be found in $STARLINK_DIR/share/smurf/resist.cfg
 Copyright
 ~~~~~~~~~
 Copyright (C) 2011-2013 Science and Technology Facilities Council.
-Copyright (C) 2015-2016 East Asian Observatory All Rights Reserved.
+Copyright (C) 2015-2018 East Asian Observatory All Rights Reserved.
 
 
 Licence

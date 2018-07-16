@@ -101,13 +101,14 @@ fitting ranges automatically. It is therefore only applicable when
 AUTO=TRUE. Its purpose is to exclude features that are not part of the
 trends.
 Pixels are rejected at the ith clipping cycle if they lie beyond plus
-or minus CLIP(i) times the dispersion about the mean of the remaining
-good pixels. Thus lower values of CLIP will reject more pixels. The
-normal approach is to start low and progressivley increase the
-clipping factors, as the dispersion decreases after the exclusion of
-features. The source of the dispersion depends on the value the METHOD
-parameter. Between one and five values may be supplied. Supplying the
-null value (!), results in 2, 2.5, and 3 clipping factors. [2,2,2.5,3]
+or minus CLIP(i) times the dispersion about the median of the
+remaining good pixels. Thus lower values of CLIP will reject more
+pixels. The normal approach is to start low and progressivley increase
+the clipping factors, as the dispersion decreases after the exclusion
+of features. The source of the dispersion depends on the value the
+METHOD parameter. Between one and five values may be supplied.
+Supplying the null value (!), results in 2, 2.5, and 3 clipping
+factors. [2,2,2.5,3]
 
 
 

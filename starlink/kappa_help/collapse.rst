@@ -92,13 +92,17 @@ the range 0 to 255). ["Data"]
 ESTIMATOR = LITERAL (Read)
 ``````````````````````````
 The method to use for estimating the output pixel values. It can be
-one of the following options. The first four are more for general
+one of the following options. The first five are more for general
 collapsing, and the remainder are for cube analysis. "Mean" -- Mean
 value "WMean" -- Weighted mean in which each data value is weighted by
 the reciprocal of the associated variance (not available for
 COMP="Variance" or "Error"). "Mode" -- Modal value "Median" -- Median
 value. Note that this is extremely memory and CPU intensive for large
-datasets; use with care! If strange things happen, use "Mean".
+datasets; use with care! If strange things happen, use "Mean" or try
+"FastMed". "FastMed"-- Faster median using Wirth's algorithm for
+selecting the kth value, rather than a full sort. Weighting is not
+supported, thus this option is unavailable if both Parameter VARIANCE
+is TRUE and the input NDF contains a VARIANCE component.
 "Absdev" -- Mean absolute deviation from the unweighted mean. "Cmean"
 -- Sigma-clipped mean. "Csigma" -- Sigma-clipped standard deviation.
 "Comax" -- Co-ordinate of the maximum value. "Comin" -- Co-ordinate of
@@ -320,8 +324,8 @@ Copyright
 ~~~~~~~~~
 Copyright (C) 2000-2001, 2004 Central Laboratory of the Research
 Councils. Copyright (C) 2005-2006 Particle Physics & Astronomy
-Research Council. Copyright (C) 2007-2009, 2013 Science and Technology
-Facilities Council. All Rights Reserved.
+Research Council. Copyright (C) 2007-2009, 2013, 2018 Science and
+Technology Facilities Council. All Rights Reserved.
 
 
 Licence

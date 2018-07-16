@@ -120,6 +120,18 @@ be closed befopre the new one is opened. []
 
 
 
+MAPDIR = LITERAL (Read)
+```````````````````````
+Path to a directory containing any pre-existing Q/U/I maps. Each UT
+date should have a separate subdirectory within "mapdir", and each
+observation should have a separate subdirectory within its <UT> date
+subdirectory. Any new Q/U/I maps created by this script are placed in
+this directory. If null (!) is supplied, the root directory containing
+the Q/U maps is placed within the temporary directory used to store
+all other intermediate files. [!]
+
+
+
 MSG_FILTER = LITERAL (Read)
 ```````````````````````````
 Controls the default level of information reported by Starlink atasks
@@ -139,7 +151,9 @@ the 8 digit UT date (e.g. "20151009") and <obs> is the 5 digit
 observation number (e.g. "00034"). Blank lines and lines starting with
 "#" are ignored. The raw data for all observations is expected to
 reside in a directory given by environment variable "SC2", within
-subdirectories with paths of the form: $SC2/s8a/20150918/00056/ etc.
+subdirectories with paths of the form: $SC2/[s4a|s8a]/20150918/00056/
+etc. The choice of "s8" or "s4" is made on the basis of parameter
+WAVEBAND.
 
 
 
@@ -173,12 +187,13 @@ specifying the path to the directory. [FALSE]
 
 QUDIR = LITERAL (Read)
 ``````````````````````
-Path to a directory containing any pre-exiting Q/U time streams or Q/U
-maps. Each UT date should have a separate subdirectory within "qudir",
-and each observation should have a separate subdirectory within its
-<UT> date subdirectory. If null (!) is supplied, the root directory is
-placed within the temporary directory used to store all other
-intermediate files. [!]
+Path to a directory containing any pre-existing Q/U/I time streams.
+Each UT date should have a separate subdirectory within "qudir", and
+each observation should have a separate subdirectory within its <UT>
+date subdirectory. Any new Q/U/I time streams created by this script
+are placed in this directory. If null (!) is supplied, the root
+directory containing the Q/U time streams is placed within the
+temporary directory used to store all other intermediate files. [!]
 
 
 
@@ -196,6 +211,12 @@ The path to an existing text file containing a table created by a
 previous run of this script, using the TABLE parameter. If supplied,
 none of the other parameters are accessed, and a fit is performed to
 the values in the supplied table. [!]
+
+
+
+WAVEBAND = LITERAL (Read)
+`````````````````````````
+Indicates the waveband - "450" or "850".
 
 
 

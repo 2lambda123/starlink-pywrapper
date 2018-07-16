@@ -269,7 +269,8 @@ intended for passing to other applications. [!]
 MAJFWHM( 2 ) = _DOUBLE (Write)
 ``````````````````````````````
 The major-axis FWHM and its error, measured in the current co-ordinate
-Frame of the NDF, for each beam.
+Frame of the NDF, for each beam. Note that the unit for sky co-
+ordinate Frames is radians.
 
 
 
@@ -306,7 +307,8 @@ to -31. [current value]
 MINFWHM( 2 ) = _DOUBLE (Write)
 ``````````````````````````````
 The minor-axis FWHM and its error, measured in the current co-ordinate
-Frame of the NDF, for each beam.
+Frame of the NDF, for each beam. Note that the unit for sky co-
+ordinate Frames is radians.
 
 
 
@@ -627,8 +629,8 @@ FITGAUSS.
 Copyright
 ~~~~~~~~~
 Copyright (C) 2007 Particle Physics & Astronomy Research Council.
-Copyright (C) 2009, 2010, 2011, 2013 Science & Technology Facilities
-Council. All Rights Reserved.
+Copyright (C) 2009, 2010, 2011, 2013, 2018 Science & Technology
+Facilities Council. All Rights Reserved.
 
 
 Licence

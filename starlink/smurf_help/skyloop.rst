@@ -33,9 +33,6 @@ The temporary files are placed in a directory name "NDG_xxxxx",
 located within the directory specified by environment variable
 STAR_TEMP. If STAR_TEMP is not defined, they are placed in the
 system's temporary directory (e.g. "/tmp").
-In addition, files holding the extinction correction factor for each
-data sample, and files holding the noise model, are written to the
-current working directory. These are deleted when the script ends.
 
 
 Usage
@@ -57,6 +54,19 @@ ADAM parameters
 
 
 
+CHUNKWGT = _LOGICAL (Read)
+``````````````````````````
+Controls the weight used for each chunk. If False, then the weights
+are determined by the value of the CHUNKWGT FITS header in each input
+time-stream data file (unit weight is used for any data file that has
+no CHUNKWGT FITS header). If True, the weight for each chunk is based
+on the normalised map change for each chunk calculated on the previous
+iteration - the weight for a chunk is the ratio of the mean of all the
+chunk map changes to the chunk's own map change. Weights above 1.0 are
+limited to 1.0. [False]
+
+
+
 CONFIG = LITERAL (Read)
 ```````````````````````
 The MAKEMAP configuration parameter values to use. Additions will be
@@ -66,23 +76,24 @@ made as follows:
 + First iteration:
 + -- numiter=1 noi.export=1 exportNDF=(lut,ext,res,qua)
 noexportsetbad=1 exportclean=1 ast.zero_notlast = 0 flt.zero_notlast =
-0 com.zero_notlast = 0 itermap=0 shortmap=0 bolomap=0 flagmap=<undef>
-sampcube=0 diag.append=0
+0 com.zero_notlast = 0 pca.zero_notlast = 0 itermap=0 shortmap=0
+bolomap=0 flagmap=<undef> sampcube=0 diag.append=0
 + --
 + Subsequent iterations:
 + -- numiter=1 noi.import=1 exportNDF=(res,qua) doclean=0
 importsky=ref importlut=1 ext.import=1 ast.zero_notlast = 0
-flt.zero_notlast = 0 com.zero_notlast = 0 flt.notfirst = 0
-pln.notfirst = 0 smo.notfirst = 0 itermap=0 shortmap=0 bolomap=0
-flagmap=<undef> sampcube=0 diag.append=1 downsampscale=0
-downsampfreq=0 fakemap=<undef>
+flt.zero_notlast = 0 com.zero_notlast = 0 pca.zero_notlast = 0
+flt.notfirst = 0 pca.notfirst = 0 pln.notfirst = 0 smo.notfirst = 0
+itermap=0 shortmap=0 bolomap=0 flagmap=<undef> sampcube=0
+diag.append=1 downsampscale=0 downsampfreq=0 fakemap=<undef>
 + --
 + Last iteration:
 + -- numiter=1 noi.import=1 doclean=0 importsky=ref importlut=1
 ext.import=1 ast.zero_notlast = 1 flt.zero_notlast = 1
-com.zero_notlast = 1 flt.notfirst = 0 pln.notfirst = 0 smo.notfirst =
-0 itermap=0 shortmap=0 bolomap=0 flagmap=<undef> sampcube=0
-diag.append=1 downsampscale=0 downsampfreq=0 fakemap=<undef>
+com.zero_notlast = 1 pca.zero_notlast = 1 flt.notfirst = 0
+pca.notfirst = 0 pln.notfirst = 0 smo.notfirst = 0 itermap=0
+shortmap=0 bolomap=0 flagmap=<undef> sampcube=0 diag.append=1
+downsampscale=0 downsampfreq=0 fakemap=<undef>
 + --
 
 
@@ -151,8 +162,7 @@ position, to get the IP correction. These Q and U corrections are
 rotated so that they use the same reference direction as the input Q/U
 data, corrected for extinction, and are then subtracted from the input
 Q or U value before going on to make a map from the corrected values.
-The factors are determined using the IP model specified by the
-"ipmodel" configuration parameter. [!]
+[!]
 
 
 
@@ -187,20 +197,20 @@ parameter in the configuration. [0]
 MASK2 = NDF (Read)
 ``````````````````
 An existing NDF that can be used to specify a second external mask for
-use with either the AST, FLT or COM model. See configuration
-parameters AST.ZERO_MASK, FLT.ZERO_MASK and COM.ZERO_MASK. Note, it is
-assumed that this image is aligned in pixel coordinate with the output
-map. [!]
+use with either the AST, PCA, FLT or COM model. See configuration
+parameters AST.ZERO_MASK, PCA.ZERO_MASK, FLT.ZERO_MASK and
+COM.ZERO_MASK. Note, it is assumed that this image is aligned in pixel
+coordinate with the output map. [!]
 
 
 
 MASK3 = NDF (Read)
 ``````````````````
 An existing NDF that can be used to specify a third external mask for
-use with either the AST, FLT or COM model. See configuration
-parameters AST.ZERO_MASK, FLT.ZERO_MASK and COM.ZERO_MASK. Note, it is
-assumed that this image is aligned in pixel coordinate with the output
-map. [!]
+use with either the AST, PCA, FLT or COM model. See configuration
+parameters AST.ZERO_MASK, PCA.ZERO_MASK, FLT.ZERO_MASK and
+COM.ZERO_MASK. Note, it is assumed that this image is aligned in pixel
+coordinate with the output map. [!]
 
 
 
@@ -210,6 +220,18 @@ Controls the default level of information reported by Starlink atasks
 invoked within the executing script. The accepted values are the list
 defined in SUN/104 ("None", "Quiet", "Normal", "Verbose", etc).
 ["Normal"]
+
+
+
+OBSDIR = LITERAL (Read)
+```````````````````````
+The name of a directory in which to put maps made from the individual
+observations. These are generated on the final iteration. If null is
+supplied, individual observation maps will not be created. Each map is
+stored in a file with name <UT>_<OBS>.sdf. If a single observation is
+split into multiple chunks, the first chunk will use the above naming
+scheme but the second and subsequent chunks will have names of the
+form <UT>_<OBS>_<CHUNK>.sdf. [!]
 
 
 
@@ -234,8 +256,9 @@ supplied, the output grid will be aligned with the supplied reference
 NDF. The reference can be either 2D or 3D and the spatial frame will
 be extracted. If a null (!) value is supplied then the output grid is
 determined by parameters REFLON, REFLAT, etc. In addition, this NDF
-can be used to mask the AST, FLT or COM model. See configuration
-parameters AST.ZERO_MASK, FLT.ZERO_MASK and COM.ZERO_MASK.
+can be used to mask the AST, PCA, FLT or COM model. See configuration
+parameters AST.ZERO_MASK, PCA.ZERO_MASK, FLT.ZERO_MASK and
+COM.ZERO_MASK.
 On the second and subsequent invocations of MAKEMAP, any supplied REF
 image is replaced by the map created by the previous invocation of
 MAKEMAP. [!]

@@ -45,11 +45,20 @@ ADAM parameters
 
 
 
+BINSIZE = _REAL (Read)
+``````````````````````
+The bin size in the output vector catalogue, in arcsec. The value
+supplied for parameter PIXSIZE is used as the default for BINSIZE. An
+error is reported if BINSIZE is smaller than PIXSIZE. []
+
+
+
 CAT = LITERAL (Read)
 ````````````````````
 The output FITS vector catalogue. No catalogue is created if null (!)
-is supplied. Note - currently, the Q, U and PI values in this
-catalogue will be in units of pW. [!]
+is supplied. The Q, U and PI values in this catalogue will be in units
+of pW or mJy/beam, as selected using parameter JY . The bin size is
+specified by parameter BINSIZE. [!]
 
 
 
@@ -98,7 +107,8 @@ pca.zero_circle = 0.0038 com.zero_circle = 0.0083 flt.zero_circle =
 0.0083
 + -- The default value for pca.pcathresh indicated above will be
   changed if it is too high to allow convergence of the I maps within
-  the number of iterations allowed by numiter.
+  the number of iterations allowed by numiter (this change only occurs
+  if parameter SKYLOOP is FALSE).
 
 If MASK is set to the name of an NDF, this script creates fixed masks
 from the NDF, and the following parameters are added to the above
@@ -380,12 +390,36 @@ list defined in SUN/104 ("None", "Quiet", "Normal", "Verbose", etc).
 
 
 
+MULTIOBJECT = _LOGICAL (Read)
+`````````````````````````````
+Indicates if it is acceptable for the list of input files to include
+data for multiple objects. If FALSE, an error is reported if data for
+more than one object is specified by parameter IN. Otherwise, no error
+is reported if multiple objects are found. [FALSE]
+
+
+
 NEWMAPS = LITERAL (Read)
 ````````````````````````
 The name of a text file to create, in which to put the paths of all
 the new maps written to the directory specified by parameter MAPDIR
 (one per line). If a null (!) value is supplied no file is created.
 [!]
+
+
+
+NORMALISE = _LOGICAL (Read)
+```````````````````````````
+If TRUE, scale corrections for individual observations found in any
+pre-existing auto-masked maps (e.g. made on a previous run of this
+script) are applied when creating new maps. If False, no scale
+corrections are applied. Scale correction factors are created and
+stored at the same time as the pointing corrections. The correction
+factor for a single observation is found by comparing the data values
+in the map made from the single observation with those in the mean of
+the maps made from all observation. The factor found in this way is
+stored in the FITS extension of the map made from the observation
+(header "CHUNKFAC"). [FALSE]
 
 
 
@@ -400,10 +434,32 @@ axis. If "TRACKING" is supplied, they use north in the tracking system
 
 
 
+OBSWEIGHT = _LOGICAL (Write)
+````````````````````````````
+This parameter affects how maps from separate observations are
+weighted when they are combined together to form a coadd. If it is
+FALSE, each pixel in each map is weighted simply using the reciprocal
+of the Variance value stored in the map. If it is TRUE, an extra
+factor is included in the pixel weights that is constant for all
+pixels in a map but varies from observation to observation. In other
+words, each observation is assigned a weight, which is used to factor
+the pixel weights derived from the Variance values. The purpose of
+this per-observation weight is to down-weight observations that are
+very different to the other observations and which would therefore
+contribute to a high Variance if parameter MAPVAR is set TRUE. These
+weights are proportional to 1/(RMS*RMS), where "RMS" is the RMS
+residual between an individual observation map and the coadd of all
+observation maps, after they have been aligned spatially to take
+account of any pointing error in the individual observation. [FALSE]
+
+
+
 PIXSIZE = _REAL (Read)
 ``````````````````````
-Pixel dimensions in the output I maps, in arcsec. The default is 4
-arc-sec for 850 um data and 2 arc-sec for 450 um data. []
+Pixel dimensions in the output I, Q and U maps, in arcsec. The default
+is 4 arc-sec for both 450 and 850 um data. The bin size for the output
+catalogue can be specified separately - see parameter BINSIZE and CAT.
+[4]
 
 
 
@@ -436,7 +492,7 @@ script exists (unless parameter RETAIN is set TRUE). [!]
 REF = NDF (Read)
 ````````````````
 An optional map defining the pixel grid for the output maps, and which
-is used to determien pointing corrections. If null (!) is supplied,
+is used to determine pointing corrections. If null (!) is supplied,
 then the map (if any) specified by parameter MASK is used. See also
 parameter REFFCF. [!]
 
@@ -470,6 +526,18 @@ Should the temporary directory containing the intermediate files
 created by this script be retained? If not, it will be deleted before
 the script exits. If retained, a message will be displayed at the end
 specifying the path to the directory. [FALSE]
+
+
+
+SKYLOOP = _LOGICAL (Read)
+`````````````````````````
+Should the skyloop script be used in place of makemap to create the
+maps from the I, Q and U time-series data? Note, when using skyloop it
+is not possible to add in new observations to an existing collection
+of I, Q and U maps - all observations must be processed together.
+Therefore the value supplied for parameter REUSE will be ignored and a
+value of FALSE assumed if the MAPDIR directory is missing maps for any
+of the supplied observations. [FALSE]
 
 
 

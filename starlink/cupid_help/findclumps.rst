@@ -361,18 +361,24 @@ rejecting the least significant 10% of spatial pixels, where
 contribute to the spatial pixel. The polygon is then a fit to the
 outer boundary of the remaining spatial pixels.
 + Ellipse: All data values in the clump are projected onto the spatial
-  plane and "size" of the collapsed clump at four different position
-  angles - all separated by 45 degrees - is found (see the OUTCAT
-  parameter for a description of clump "size"). The ellipse that
-  generates the same sizes at the four position angles is then found and
-  used as the clump shape.
+plane and "size" of the collapsed clump at four different position
+angles - all separated by 45 degrees - is found (see the OUTCAT
+parameter for a description of clump "size"). The ellipse that
+generates the closest sizes at the four position angles is then found
+and used as the clump shape.
++ Ellipse2: The above method for determining ellipses works well for
+  clumps that are in fact elliptical, but can generate extremely long
+  thin ellipses for clumps are far from being ellitical. The "Ellipse2"
+  option uses a different method for determining the best ellipse based
+  on finding many marginal profiles at one degree intervals of azimuth,
+  and using the longest marginal profile as the major axis.
 
-In general, "Ellipse" will outline the brighter, inner regions of each
-clump, and "Polygon" will include the fainter outer regions. The
+In general, ellipses will outline the brighter, inner regions of each
+clump, and polygons will include the fainter outer regions. The
 dynamic default is "Polygon" if a JSA-style catalogue (see parameters
 JSACAT) is being created, and "None" otherwise. Note, if a JSA-style
-catalogue is neing created an error will be reported if "Ellipse" or
-"None" is selected. []
+catalogue is being created an error will be reported if "Ellipse",
+"Ellipse2" or "None" is selected. []
 
 
 

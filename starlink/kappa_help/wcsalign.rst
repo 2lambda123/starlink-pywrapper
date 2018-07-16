@@ -13,7 +13,7 @@ Description
 ~~~~~~~~~~~
 This application resamples or rebins a group of input NDFs, producing
 corresponding output NDFs which are aligned pixel-for-pixel with a
-specified reference NDF.
+specified reference NDF, or POLPACK catalogue (see parameter REFCAT).
 If an input NDF has more pixel axes than the reference NDF, then the
 extra pixel axes are retained unchanged in the output NDF. Thus, for
 instance, if an input RA/Dec/velocity cube is aligned with a reference
@@ -197,7 +197,7 @@ NDFs. If a null value (!) is given for this parameter or for Parameter
 UBND, then separate default values are calculated for each output NDF
 which result in the output NDF just encompassing the corresponding
 input NDF. The suggested defaults are the lower pixel-index bounds
-from the reference NDF (see Parameter REF).
+from the reference NDF, if supplied (see Parameter REF).
 
 
 
@@ -344,7 +344,16 @@ REF = NDF (Read)
 ````````````````
 The NDF to which all the input NDFs are to be aligned. If a null value
 is supplied for this parameter, the first NDF supplied for Parameter
-IN is used.
+IN is used. This parameter is only used if no catalogue is supplied
+for parameter REFCAT.
+
+
+
+REFCAT = NDF (Read)
+```````````````````
+A POLPACK catalogue defining the WCS to which all the input NDFs are
+to be aligned. If a null value is supplied for this parameter, the WCS
+will be obtained from an NDF using parameter REF. [!]
 
 
 
@@ -357,7 +366,7 @@ NDFs. If a null value (!) is given for this parameter or for Parameter
 LBND, then separate default values are calculated for each output NDF
 which result in the output NDF just encompassing the corresponding
 input NDF. The suggested defaults are the upper pixel-index bounds
-from the reference NDF (see Parameter REF).
+from the reference NDF, if supplied (see Parameter REF).
 
 
 

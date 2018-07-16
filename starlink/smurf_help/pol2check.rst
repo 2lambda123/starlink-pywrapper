@@ -28,6 +28,10 @@ smurf task if any of the additional meta-data required by those tasks
 has been corrupted or is otherwise inappropriate.
 An error is reported if POL2 data from more than one waveband (450 or
 850) is present in the list of supplied data files.
+By default, an error is also reported if POL2 data for more than one
+object is present in the list of supplied data files (this check can
+be disabled by setting parameter MULTIOBJECT to TRUE). The object is
+given by FITS header "OBJECT".
 
 
 ADAM parameters
@@ -99,6 +103,15 @@ for any sub-array. The text file will contain a line for each sub-
 array that has any missing sub-scans. Each line will start with the
 sub-array name and be followed by a space spearated list of sub-scan
 identifiers. For instance, "S8A: _0012 _0034".
+
+
+
+MULTIOBJECT = _LOGICAL (Read)
+`````````````````````````````
+Indicates if it is acceptable for the list of input files to include
+data for multiple objects. If FALSE, an error is reported if data for
+more than one object is specified by parameter IN. Otherwise, no error
+is reported if multiple objects are found. [FALSE]
 
 
 

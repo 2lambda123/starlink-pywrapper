@@ -74,6 +74,13 @@ supplied. [!]
 
 
 
+CHUNKCHANGE( ) = _DOUBLE (Write)
+````````````````````````````````
+An output array holding the final normalised map change value for each
+chunk.
+
+
+
 CONFIG = GROUP (Read)
 `````````````````````
 Specifies values for the configuration parameters used by the
@@ -238,8 +245,7 @@ position, to get the IP correction. These Q and U corrections are
 rotated so that they use the same reference direction as the input Q/U
 data, corrected for extinction, and are then subtracted from the input
 Q or U value before going on to make a map from the corrected values.
-The factors are determined using the IP model specified by the
-"ipmodel" configuration parameter. [!]
+[!]
 
 
 

@@ -58,7 +58,8 @@ output. Alternatively, output variances can be generated from the
 spread of input values contributing to each output pixel (see
 Parameter GENVAR). Any input variances can also be used to weight the
 input data (see Parameter VARIANCE). By default, all input data is
-given equal weight.
+given equal weight. An additional weight for each NDF can be specified
+using parameter WEIGHTS.
 The transformations needed to produce alignment are derived from the
 co-ordinate system information stored in the WCS components of the
 supplied NDFs. For each input NDF, alignment is first attempted in the
@@ -388,6 +389,17 @@ variances. However, WCSMOSAIC uses the VARIANCE parameter only for the
 first of these purposes (determining whether to weight the input
 data). The second purpose (determining how to create output variances)
 is fulfilled by the GENVAR parameter. [FALSE]
+
+
+
+WEIGHTS = LITERAL (Read)
+````````````````````````
+An optional group of numerical weights, one for each of the input NDFs
+specified by parameter IN. If VARIANCE is TRUE, the weight assigned to
+each input pixel is the value supplied in this group correspoinding to
+the appropriate input NDF, divided by the variance of the pixel value.
+An error is reported if the number of supplied weights does not equal
+the number of supplied input NDFs. [!]
 
 
 

@@ -22,12 +22,13 @@ where (Xin,Yin) are pixel co-ordinates in the input NDF, and
 coefficient values (C1--C6) are determined by doing a least-squares
 fit that minimises the sum of the squared residuals between the
 reference NDF and the transformed input NDF. If variance information
-is present in either NDF, it is used to weight the residuals within
-the fit, so that noisy data values have less effect on the fit. The
-best fit coefficients are displayed on the screen and written to an
-output parameter. Optionally, the transformation may be applied to the
-input NDF to create an output NDF (see Parameter OUT). It is possible
-to restrict the transformation in order to prevent shear, rotation,
+is present in either NDF, it is used to determine the SNR of each
+pixel which is used to weight the residuals within the fit, so that
+noisy data values have less effect on the fit. The best fit
+coefficients are displayed on the screen and written to an output
+parameter. Optionally, the transformation may be applied to the input
+NDF to create an output NDF (see Parameter OUT). It is possible to
+restrict the transformation in order to prevent shear, rotation,
 scaling, etc. (see Parameter FORM).
 It is possible to exclude from the fitting process areas of the input
 NDF that are poorly correlated with the corresponding areas in the
@@ -247,6 +248,13 @@ resampling algorithm is used. See the "Choice of Algorithm" below.
 REF = NDF (Read)
 ````````````````
 NDF to be used as a refernece.
+
+
+
+RMS = _DOUBLE (Write)
+`````````````````````
+An output parameter to which is written the RMS residual between the
+aligned data and the reference data.
 
 
 

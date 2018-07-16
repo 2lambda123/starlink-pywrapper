@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='starlink-pywrapper',
-      version='0.2',
+      version='0.3rc1',
       description='Provides a wrapper around the Starlink software suite commands.',
       long_description=readme(),
       classifiers=[
