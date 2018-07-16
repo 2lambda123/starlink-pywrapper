@@ -296,7 +296,7 @@ def setup_starlink_environ(starpath, adamdir,
                       os.path.pathsep + os.path.join(starpath, 'Perl', 'lib', 'perl5')
 
     # Setting up the Path (note that we are using shell=False)
-    originalpath = os.environ['PATH']
+    originalpath = os.environ.get('PATH', '')
     env['PATH'] = os.path.pathsep.join([
                                     os.path.join(starpath, 'bin', 'startcl'),
                                     os.path.join(starpath, 'bin'),
