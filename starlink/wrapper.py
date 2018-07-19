@@ -326,6 +326,19 @@ def change_starpath(starlinkdir):
     starpath = starlinkdir
 
 
+def set_HDS_version(version):
+    """
+    Use this to switch between HDS_VERSION=4 and HDS_VERSION=5.
+
+    The default is determined by your Starlink installation. Please
+    note that this package will not currently pay attention to an
+    HDS_VERSION set in your environment before running Python.
+    """
+    try:
+        env['HDS_VERSION'] = str(version)
+    except NameError:
+        logger.error('No `env` found: please run change_starpath first.',
+                     exc_info=1)
 
 # Basic command to execute a starlink application
 def starcomm(command, commandname, *args, **kwargs):
