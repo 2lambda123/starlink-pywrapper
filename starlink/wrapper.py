@@ -16,27 +16,33 @@
 
 
 """
-starlink.wrapper: Module for running starlink commands from python.
+starlink.wrapper: A module for running Starlink commands from python.
 
-This uses subprocess.Popen to run Starlink commands, and requires a
-separate installation of the Starlink Software Suite.
+This uses subprocess.Popen to run Starlink commands, and therefore
+requires a separate working installation of the Starlink Software
+Suite.
 
-It allows you to use a standard formatted keyword arguments
-to call the starlink commands. Shell escapes do not need to be used.
+You must specify the location of your Starlink installation by eitherj
+
+ - a) setting $STARLINK_DIR to the location of your Starlink
+   installation before running Python.
+ - b) running the command `starlink.wrapper.change_starpath` after
+   importing the module.
+
+This module allows you to use standard keyword arguments to call the
+starlink commands. Shell escapes do not need to be used.
 
 By default, when you run commands using this module it will create a
 new temporary ADAM directory in the current folder, and use that as
 the ADAM directory for the starlink processes. In order to avoid
 returning values from a previous run, it will delete the
 <commandname>.sdf files from the ADAM directory after reading them
-back in.
+back in. This also means it will not remember which options you used
+on the previous call to the command (unlike the command line
+Starlink).
 
 This code was written to allow quick calling of kappa, smurf and cupid
-in the way I usually think about them from python scripts, with
-regular keyword variables.
-
-Its recommended to set STARLINK_DIR in your environment before opening
-python to run this software.
+in a more 'pythonic' way.
 """
 
 import atexit
@@ -69,8 +75,8 @@ default_starpath = None
 
 
 
-# Subprocess fix for sig pipe? Attempt to solve zombie monolith problem.
-# TODO check if this should be used?
+# Subprocess fix for sig pipe. This attempts to solve zombie monolith problem.
+# TODO check if this should be used.
 # Graham thinks it should be given to preexec_fn.
 def subprocess_setup():
     # Python installs a SIGPIPE handler by default. This is usually
@@ -236,6 +242,7 @@ xwindow_names = {
     "x4windows" : "xwindows4"
 }
 
+
 # Return type for PICARD and ORAC-DR
 oracoutput = namedtuple('oracoutput', 'runlog outdir datafiles imagefiles logfiles status pid')
 
@@ -243,7 +250,7 @@ def setup_starlink_environ(starpath, adamdir,
                            noprompt=True):
 
     """
-    Create a suitable ENV dict to pass to subprocess.Popen
+    Create a suitable ENV dict to pass to subprocess.Popen.
     """
 
     env = {}
@@ -251,11 +258,7 @@ def setup_starlink_environ(starpath, adamdir,
     env['AGI_USER'] = os.path.join(adamdir)
 
     # Add on the STARLINK libraries to the environmental path
-    # Skip if on Mac, where we shouldn't need DYLD_LIBRARY_PATH?
-    #if sys.platform == 'darwin':
-    #    ld_environ = 'DYLD_LIBRARY_PATH'
-    #    javapaths = [os.path.join(starpath,'starjava', 'lib','i386'),
-    #                 os.path.join(starpath, 'starjava', 'lib', 'x86_64')]
+    # Skip if on Mac, where we shouldn't need DYLD_LIBRARY_PATH.
     if sys.platform != 'darwin':
         ld_environ = 'LD_LIBRARY_PATH'
         javapaths = [os.path.join(starpath, 'starjava', 'lib', 'amd64')]
@@ -283,7 +286,8 @@ def setup_starlink_environ(starpath, adamdir,
     # Add the CONVERT environ variables to the env.
     env.update(condict)
 
-    # Set up various starlink variables
+    # Set up various starlink variables.
+
     # Package directories -- e.g. KAPPA_DIR etc names
     for module_env, modulepath in starlink_environdict_substitute.items():
         env[module_env] = os.path.join(starpath, modulepath)
@@ -342,9 +346,10 @@ def set_HDS_version(version):
 
 # Basic command to execute a starlink application
 def starcomm(command, commandname, *args, **kwargs):
-    """Execute a Starlink application
+    """
+    Execute a Starlink application
 
-    Carries out the starlink command, and returns a namedtuple of the
+    Carries out the starlink 'commandname', and returns a namedtuple of the
     starlink parameter values (taken from $ADAM_DIR/<com>.sdf
 
     Arguments
@@ -384,7 +389,7 @@ def starcomm(command, commandname, *args, **kwargs):
     -----
 
     Starlink parameters or functions that are reserved python names
-    (e.g. 'in') can be called by appending an underscore. E.g.
+    (e.g. 'in') should be called by appending an underscore. E.g.
 
     >>> in_='myndf.sdf'
 
@@ -394,11 +399,7 @@ def starcomm(command, commandname, *args, **kwargs):
     kwargs = dict((k.lower(), v) for k, v in kwargs.items())
 
 
-    # If quiet not set in kwargs, then default to current module
-    # default (variable QUIET).
-    #if not 'quiet' in kwargs and com not in {'jsasplit.py', 'picard_start.sh'}:
-    #    kwargs['quiet'] = QUIET
-
+    # Always allow returning the std out as a string:
     if 'returnstdout' in kwargs:
         returnStdOut = kwargs.pop('returnstdout')
     else:
@@ -408,10 +409,8 @@ def starcomm(command, commandname, *args, **kwargs):
     # subprocess.Popen.
     arg = _make_argument_list(*args, **kwargs)
 
-    ## Append 'RESET' to args list?
-    # This doesn't work with starutil python scripts, e.g. jsasplit...
-    #arg += ['RESET']
 
+    # Now try running the command.
     try:
         # Replace things like ${KAPPA_DIR} and $KAPPA_DIR with the
         # KAPPA_DIR value.
@@ -420,8 +419,8 @@ def starcomm(command, commandname, *args, **kwargs):
             command = command.replace('${' + i + '}', env[i])
 
 
-        # Check if there is a 'device' keyword? NB this won't work if
-        # it is an argument...
+        # Check if there is a 'device' keyword. NB this won't work if
+        # it is an argument.
         xmake = False
         if 'device' in kwargs:
             if kwargs['device'].endswith('/GWM'):
@@ -432,7 +431,7 @@ def starcomm(command, commandname, *args, **kwargs):
                 gdname = xwindow_names[kwargs['device']]
 
         if xmake:
-            logger.info('Creating xwindow named {}'.format(gdname))
+            logger.debug('Creating xwindow named {}'.format(gdname))
             xmakecomm = os.path.join(env['STARLINK_DIR'], 'bin', 'xmake')
             logger.debug('{} {}'.format(xmakecomm, gdname))
             p=subprocess.Popen([xmakecomm, gdname], env=env)
@@ -523,8 +522,6 @@ def _make_argument_list(*args, **kwargs):
 
     Turn pythonic list of positional arguments and keyword arguments
     into a list of strings.
-
-    TODO: this should really be more thoroughly checked.
 
     N.B.: subprocess.Popen works best with each argument as item in
     list, not as a single string. Otherwise it breaks on starlink
@@ -905,7 +902,7 @@ def picard(recipe, files, dataout=None,
     Arguments
     ----------
     recipe: str
-        Name of instrument
+        Name of recipe
 
     files: str or list of str
         If str: name of textfile containing list of files. If list: list
@@ -1087,7 +1084,7 @@ else:
             logger.info('Using Starlink at {}.'.format(starpath))
 
         else:
-            logger.warning('Could not find Starlink: please run change_starpath("/path/to/star")')
+            logger.warning('Could not find Starlink: please run {}.change_starpath("/path/to/star")'.format(__name__))
 
 # ADAM_USER: set this to temporary directory in the current directory,
 # that should be automatically deleted when python closes.
