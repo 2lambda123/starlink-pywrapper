@@ -1,178 +1,94 @@
 .. inclusion-marker-do-not-remove
-Provides a wrapper around the Starlink software suite commands.
+
+Easily script Starlink commands with Python.
 
 **This package requires a separate working Starlink installation to be
-available.** It allow easy 'pythonic' calling of Starlink commands
-from python, by settuping the environmental variables inside Python
-and then using `subprocess.Popen` to run the Starlink binaries.
+available and the path to be passed to the package**. See
+https://starlink.eao.hawaii.edu to download Starlink. It allows easy
+*pythonic* calling of Starlink commands from python, where you can use
+normal Python arguments and keywords and have access to the call
+signatures and help strings through the normal Python help.
 
-The wrapped Starlink packages are each provided in their own python
-module, available as `starlink.<modulename>`, and the within the
-package as starlink.<modulename>.<commandname>.
-
-
-Using this package
-==================
-
-Setting up the package
-----------------------
-
-First of all, you will have to let this module know where your
-Starlink software suite is installed. You can either directly set the
-location inside python as:
-
->>> from starlink import wrapper
->>> wrapper.change_starpath('/path/to/my/starlink/installation')
-
-Alternatively, before you start Python you could set the STARLINK_DIR
-environmental variable to the location of your starlink
-installation. For example, in a BASH shell you could run `export
-STARLINK_DIR=~/star-2017A`.
+There are auto-generated wrapper modules providing easy access to the
+Starlink packages KAPPA, CONVERT, ATOOLS, CCDPACK, CUPID, FIGARO,
+POLPACK, and SMURF. There are also commands to allow access to the
+pipelines ORAC-DR and Picard.
 
 
-To see which Starlink is currently being used examine the variable
-`wrapper.starpath`.
 
-or if you are using a module you can do e.g.:
+Installation
+------------
 
->>> print(kappa.wrapper.starpath)
+You should normally install this package via ``pip`` with::
 
+      pip install starlink-pywrapper
 
-Running the commands.
----------------------
+This will also install the necessary python dependencies.
 
-You will need to import each Starlink package that you want to use. For
-example, to run the `stats` command from KAPPA on a file `myndf.sdf`
-you would do:
+You must also have a working Starlink installation, which can be
+downloaded from https://starlink.eao.hawaii.edu\.
+
+Running commands
+----------------
+
+To run e.g. the KAPPA stats command command on a file
+``myndf.sdf``, you would use the :meth:`starlink.kappa.stats`
+function, after first importing the package and telling it where
+your Starlink installation was
 
 >>> from starlink import kappa
->>> statsvals = kappa.stats('myndf.sdf')
+>>> kappa.wrapper.change_starpath('/path/to/my/starlink/installation')
+>>> statsinfo = kappa.stats('myndf.sdf')
+>>> print(statsinfo.mean)
+18.3
 
-Each command will return a namedtuple object with all of the output found
-in `$ADAM_USER/commandname.sdf`.
-
-To see a field in a namedtuple result, you can do:
-
->>> print(statsvals.mean)
-
-or to see what fields are available, you can do:
-
->>> print(statsvals._fields)
-
-(Or inside an ipython terminal session or jupyter notebook you can tab
-complete to see the list of available fields.)
-
-Getting help.
--------------
-
-This package includes docstrings for each command, summarising the
-command and its arguments and keywords. This can be seen in the normal
-python way, e.g.
-
->>> help(kappa.ndftrace)
-
-At the bottom of the command it should also give you the URL to see
-the full documentation in the Starlink User Notes.
-
-To see the available commands in a package, there is a utiliity
-'starhelp' that will show you the name and the short one-line
-description for each command. You can use it on a Starlink module like so:
-
->>> from starlink.utilities import starhelp
->>> starhelp(kappa)
+As you can see in this example, the returned object from the command
+will include all output values that you would previously have either
+accessed with KAPPA's ``parget``, or just read from the screen output.
 
 
-`starhelp` can also be called with a command name as the argument: it
-will then show you the full documentation for that command within your
-python session.
+Many other commands will produce a new output NDF file on
+disk. For example, the ``makesnr`` command in KAPPA:
 
->>> starhelp(kappa.stats)
+>>> snrinfo = kappa.makesnr(in_='myndf.sdf', out='snr.sdf', minvar=0.0)
+>>> print(snrinfo.out)
+snr.sdf
 
+The returned object is less useful for these commands, although may
+contain useful information. The documentation should indicate what
+values are returned and what they mean, and can be accessed as normal
+in Python:
 
-Directly running a command without using the specific package.
---------------------------------------------------------------
-
-
-You can also directly run a starlink command using
-:meth:`starlink.wrapper.starcomm` method. This method is used by the starlink
-modules to run the commands.
-
->>> from starlink import wrapper
->>> results = wrapper.starcomm('$KAPPA_DIR/ndftrace', 'ndftrace', 'myndf.sdf')
-
-This can be helpful if there is something wrong with the
-automatically-generated argument and keyword options in the specific
-commands, or if you are trying to run a command that is not included
-in the regular packages.
-
-Logging and seeing the full output.
------------------------------------
-
-These modules use the standard python logging module. To see the normal
-stdout of a starlink command, as well as the details of the commanline , you will need to set the logging module
-to DEBUG, i.e.:
-
->>> import logging
->>> logger = logging.getLogger()
->>> logger.setLevel(logging.DEBUG)
-
-You can also return all the information that is normally written to screen by
-setting the extra keyword argument `returnstdout=True`. This will cause your command
-to return a two part tuple of `(<normal-output>, <string-of-output-from-screen>)`.
+>>> help(kappa.makesnr)
 
 
-ORAC-DR and PICARD
-------------------
+Differences from standalone Starlink
+====================================
 
-ORAC-DR and Picard work slighly differently from the other Starlink packages.
+ - When using the command line starlink programs, each command will
+   often *remember* certain important variables you set previously,
+   and use those as the default for the next repeat of that command,
+   or the next command you run. This behaviour has been deliberately
+   not included in this package, as when writing scripts this
+   behaviour can produce suprising results. Instead, the documented
+   defaults should always be the default seen by your programs.
 
+ - You do not have to add shell escapes to your strings when passing them
+   to Starlink commands.
 
-Details of package
-==================
+ - You do not need to use KAPPA's ``parget`` to read the return values of a
+   command; instead every return value is included in the returned
+   object (a 'namedtuple' type) as a field.
 
-The commands in this package are (mostly) automatically generated from
-a Starlink build using a helper script. This script is present in the
-git repo for this project
-(https://github.com/Starlink/starlink-pywrapper , see the
-'helperfunctions' directory), but is not distributed when you install
-the software. Currently the FLUXES package is the only manually
-created command.
+ - Interactive usage of commands where you are prompted to enter
+   values is not supported; the full command must be specified when
+   running the command.
 
-
-This package uses subprocess.Popen to wrap the Starlink command calls,
-and sets up the necessary environmental variables itself. It uses the
-Starlink module to access the output data written into
-$ADAM_USER/commandname.sdf and return it to the user. It is not
-necessary to setup Starlink before using this script (e.g. by running
-`source $STARLINK_DIR/etc/profile` or similar), but you do have to
-tell the package where $STARLINK_DIR is, either by setting the
-environmental variable before starting Python, or by calling the
-`starlink.wrapper.change_starpath` command with the appropriate
-location.
-
-This package uses a local, temporary $ADAM_USER created in the current working
-directory and deleted on exit, so it is safe to have multiple scripts
-running concurrently on the same machine.
-
-This package should be regenerated for each Starlink release; normally
-most commands will stay unchanged on a new release, but there are
-normally a few additional commands (or deletion of obsolete commands),
-and the call signature for some commands may also change.
-
-
-
-Known Issues
-============
-
-1. When calling Starlink commands that are really python scripts, such
-as :meth:`starlink.smurf.jsasplit`, the module will not raise a proper error
-. Please ensure you can see the DEBUG info to identify problems.
-(This can be fixed if the scripts raise an exit code on error).
-
-2. If running a command (such as :meth:`starlink.kappa.display` that launches a
-GWM xwindow, the command will hang until you close the window. (DSB's
-starutil.py module in SMURF has a solution to this already).
-
-3. Also with GWM windows: these are missing the row of buttons along
-the bottom, unless the python call reuses an existing xw launched
-directly from Starlink. It is not known why.
+ - You should not use KAPPA's ``fitslist`` to access FITS header
+   values programatically as it will only print values to the terminal
+   (if logging is set to DEBUG), and does not provide access to them
+   in an Python object. Instead, either use
+   :meth:`starlink.kappa.fitsval` to read single values, or use the
+   :meth:`starlink.utilities.get_ndf_fitshdr` to read in the entire
+   FITS header of an NDF file and return it as an Astropy Header
+   object (requires Astropy to be installed).
